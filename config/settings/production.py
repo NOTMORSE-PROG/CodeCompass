@@ -2,7 +2,7 @@
 Production settings for Render deployment.
 All secrets must be set as environment variables in the Render dashboard.
 """
-from .base import *
+from .base import *  # noqa: F403
 
 DEBUG = False
 

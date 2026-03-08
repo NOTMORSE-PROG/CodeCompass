@@ -3,7 +3,6 @@ Auth and profile views for the accounts app.
 """
 import re
 from django.conf import settings
-from django.utils import timezone
 from rest_framework import generics, status, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -14,7 +13,7 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
 from .models import CustomUser, StudentProfile, MentorProfile
-from .permissions import IsStudent, IsMentor, IsAdminUser
+from .permissions import IsStudent, IsMentor
 from .serializers import (
     RegisterSerializer,
     UserSerializer,
@@ -236,6 +235,11 @@ class GoogleOAuthView(APIView):
                 {'detail': 'Invalid or expired Google token.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        except Exception:
+            return Response(
+                {'detail': 'Google authentication failed. Please try again.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         email = idinfo.get('email')
         if not email:
@@ -250,8 +254,7 @@ class GoogleOAuthView(APIView):
                 'first_name': idinfo.get('given_name', ''),
                 'last_name': idinfo.get('family_name', ''),
                 'username': _generate_username(email),
-                # Default role — new users will be prompted to select in /auth/google-setup
-                'role': CustomUser.Role.INCOMING_STUDENT,
+                # role intentionally left as None — user must choose in /auth/google-setup
                 'is_active': True,
             },
         )
@@ -272,6 +275,8 @@ class SetRoleView(APIView):
     Only works while is_onboarded=False. Returns fresh JWT tokens with updated role claim.
     Also ensures the correct profile (StudentProfile / MentorProfile) exists for the role.
     """
+    permission_classes = [permissions.IsAuthenticated]
+
     VALID_ROLES = [
         CustomUser.Role.INCOMING_STUDENT,
         CustomUser.Role.UNDERGRADUATE,
@@ -294,7 +299,10 @@ class SetRoleView(APIView):
 
         user = request.user
         user.role = role
-        user.save(update_fields=['role'])
+        # Mentors skip onboarding — they go straight to the app
+        if role == CustomUser.Role.MENTOR:
+            user.is_onboarded = True
+        user.save(update_fields=['role', 'is_onboarded'])
 
         # Ensure the correct profile exists (signal only runs on creation, not role update)
         if role in (CustomUser.Role.INCOMING_STUDENT, CustomUser.Role.UNDERGRADUATE):

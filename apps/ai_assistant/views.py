@@ -27,11 +27,12 @@ class ChatSessionListCreateView(generics.ListCreateAPIView):
 
 class ChatSessionDetailView(generics.RetrieveDestroyAPIView):
     """
-    GET    /api/chat/sessions/{id}/ - Get session with all messages
-    DELETE /api/chat/sessions/{id}/ - Soft-delete (deactivate) session
+    GET    /api/chat/sessions/{session_id}/ - Get session with all messages
+    DELETE /api/chat/sessions/{session_id}/ - Soft-delete (deactivate) session
     """
     serializer_class = ChatSessionSerializer
     permission_classes = [permissions.IsAuthenticated]
+    lookup_field = 'session_id'
 
     def get_queryset(self):
         return ChatSession.objects.filter(user=self.request.user)

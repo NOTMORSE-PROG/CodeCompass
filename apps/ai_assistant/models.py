@@ -10,6 +10,7 @@ class ChatSession(models.Model):
         MENTOR = 'mentor', 'Mentor Recommendation'
         JOB = 'job', 'Job Search'
         UNIVERSITY = 'university', 'University Selection'
+        ONBOARDING = 'onboarding', 'Onboarding Interview'
 
     user = models.ForeignKey(
         'accounts.CustomUser',

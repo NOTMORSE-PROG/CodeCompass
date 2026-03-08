@@ -1,0 +1,52 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # ── 1. Lint ────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Run ruff
+        run: ruff check . --exclude venv --exclude migrations
+
+  # ── 2. Secret & .env guard ────────────────────────────────────────────────
+  secret-scan:
+    name: Secret & .env guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so gitleaks can scan all commits
+
+      # Fail immediately if any .env file is tracked by git
+      - name: Check no .env files are committed
+        run: |
+          if git ls-files | grep -qE '(^|\/)\.env(\.|$)'; then
+            echo "ERROR: A .env file is tracked by git!"
+            echo "Fix it with: git rm --cached .env"
+            git ls-files | grep -E '(^|\/)\.env(\.|$)'
+            exit 1
+          fi
+          echo "OK: No .env files are tracked."
+
+      # Scan every commit in the push/PR for hardcoded secrets
+      # GITHUB_TOKEN is auto-provided by GitHub — no manual secret needed
+      - name: Scan for hardcoded secrets (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

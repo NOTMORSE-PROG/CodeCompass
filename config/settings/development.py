@@ -3,7 +3,7 @@ Development settings.
 Uses Neon PostgreSQL (via DATABASE_URL in .env) even in development.
 No local PostgreSQL or Redis installation needed — in-memory layers used for dev.
 """
-from .base import *
+from .base import *  # noqa: F403
 
 DEBUG = True
 

@@ -57,6 +57,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         password = validated_data.pop('password')
         user = CustomUser(**validated_data)
         user.set_password(password)
+        # Mentors skip onboarding — they go straight to the app
+        if user.role == 'mentor':
+            user.is_onboarded = True
         user.save()
         # Signal auto-creates StudentProfile or MentorProfile
         return user

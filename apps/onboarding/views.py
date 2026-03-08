@@ -1,104 +1,73 @@
-"""Onboarding quiz views."""
+"""Onboarding views — chat-based onboarding only."""
 from django.utils import timezone
-from rest_framework import generics, permissions, status
+from rest_framework import permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
-from apps.accounts.permissions import IsStudent
 from apps.gamification.engine import award_xp
-from .models import QuizQuestion, OnboardingSession, QuizResponse
-from .serializers import QuizQuestionSerializer, OnboardingSessionSerializer
+from .models import OnboardingSession
 
 
-class QuizQuestionsView(generics.ListAPIView):
-    """GET /api/onboarding/questions/ — Questions for this user's role."""
-    serializer_class = QuizQuestionSerializer
-    permission_classes = [IsStudent]
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def complete_from_chat(request):
+    """
+    POST /api/onboarding/complete-from-chat/
+    Extracts a structured student profile from an onboarding chat session via AI,
+    saves it as quiz_summary in OnboardingSession, and marks the user as onboarded.
+    Body: {"chat_session_id": "<uuid>"}
+    """
+    from apps.ai_assistant.models import ChatSession, ChatMessage
+    from apps.ai_assistant.groq_client import extract_profile_from_chat
 
-    def get_queryset(self):
-        role = self.request.user.role
-        audience = 'incoming' if role == 'incoming_student' else 'undergraduate'
-        return QuizQuestion.objects.filter(
-            is_active=True,
-            audience__in=[audience, 'both'],
+    chat_session_id = request.data.get('chat_session_id')
+    if not chat_session_id:
+        return Response({'detail': 'chat_session_id is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        chat_session = ChatSession.objects.get(
+            session_id=chat_session_id,
+            user=request.user,
+            context_type='onboarding',
         )
+    except ChatSession.DoesNotExist:
+        return Response({'detail': 'Onboarding chat session not found.'}, status=status.HTTP_400_BAD_REQUEST)
 
+    messages = list(
+        ChatMessage.objects.filter(session=chat_session)
+        .order_by('created_at')
+        .values('role', 'content')
+    )
+    profile = extract_profile_from_chat(messages, request.user.role)
 
-@api_view(['POST'])
-@permission_classes([IsStudent])
-def start_onboarding(request):
-    """POST /api/onboarding/start/ — Create or resume an onboarding session."""
-    session, created = OnboardingSession.objects.get_or_create(user=request.user)
-    return Response(OnboardingSessionSerializer(session).data,
-                    status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
-
-
-@api_view(['POST'])
-@permission_classes([IsStudent])
-def submit_responses(request):
-    """
-    POST /api/onboarding/responses/
-    Body: {"responses": [{"question": 1, "answer_value": "web_dev"}, ...]}
-    Saves quiz answers in batch.
-    """
-    try:
-        session = request.user.onboarding_session
-    except OnboardingSession.DoesNotExist:
-        return Response({'detail': 'Start onboarding first.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    responses_data = request.data.get('responses', [])
-    for item in responses_data:
-        try:
-            question = QuizQuestion.objects.get(pk=item['question'])
-            QuizResponse.objects.update_or_create(
-                session=session,
-                question=question,
-                defaults={'answer_value': item['answer_value']},
-            )
-        except (QuizQuestion.DoesNotExist, KeyError):
-            continue
-
-    return Response({'detail': f'Saved {len(responses_data)} responses.'})
-
-
-@api_view(['POST'])
-@permission_classes([IsStudent])
-def complete_onboarding(request):
-    """
-    POST /api/onboarding/complete/
-    Finalizes the quiz, builds quiz_summary JSON, marks user as onboarded.
-    """
-    try:
-        session = request.user.onboarding_session
-    except OnboardingSession.DoesNotExist:
-        return Response({'detail': 'Start onboarding first.'}, status=400)
-
-    # Build quiz_summary from all responses
-    summary = {
-        'user_role': request.user.role,
-        'responses': {},
-    }
-    for response in session.responses.select_related('question'):
-        summary['responses'][response.question.category] = {
-            'question': response.question.question_text,
-            'answer': response.answer_value,
-        }
-
-    session.quiz_summary = summary
+    session, _ = OnboardingSession.objects.get_or_create(user=request.user)
+    session.quiz_summary = profile
     session.status = OnboardingSession.Status.COMPLETED
     session.completed_at = timezone.now()
     session.save()
 
-    # Mark user as onboarded
-    request.user.is_onboarded = True
-    request.user.save(update_fields=['is_onboarded'])
+    # Upgrade role to incoming_student if the chat reveals they're a fresh SHS / pre-college student
+    background = (profile.get('background') or '').lower()
+    incoming_keywords = ('shs', 'senior high', 'incoming', 'pre-college', 'pre college', 'fresh grad', 'bagong grad')
+    update_fields = ['is_onboarded']
+    if any(kw in background for kw in incoming_keywords) and request.user.role == 'undergraduate':
+        request.user.role = 'incoming_student'
+        update_fields.append('role')
 
-    # Award XP for completing onboarding
-    award_xp(request.user, 'quiz_completed', session.id, 'Completed the onboarding quiz!')
+    request.user.is_onboarded = True
+    request.user.save(update_fields=update_fields)
+
+    award_xp(request.user, 'quiz_completed', session.id, 'Completed the onboarding chat!')
+
+    # Issue fresh tokens with all custom claims so the frontend JWT reflects is_onboarded=True
+    from apps.accounts.views import _issue_tokens
+    access, refresh = _issue_tokens(request.user)
 
     return Response({
-        'detail': 'Onboarding complete. You can now generate your roadmap!',
-        'quiz_summary': summary,
+        'detail': 'Onboarding complete!',
+        'quiz_summary': profile,
+        'access': access,
+        'refresh': refresh,
     })
 
 

@@ -63,7 +63,7 @@ def reject_mentor(request, pk):
     except MentorProfile.DoesNotExist:
         return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-    reason = request.data.get('reason', '')
+    # reason = request.data.get('reason', '')  # reserved for future rejection email
     # For now, just delete the mentor profile (they can re-apply)
     # In a future iteration, send rejection email here
     profile.delete()

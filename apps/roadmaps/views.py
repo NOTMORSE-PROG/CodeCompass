@@ -6,7 +6,7 @@ from rest_framework.response import Response
 
 from apps.accounts.permissions import IsStudent
 from apps.gamification.engine import award_xp
-from .models import Roadmap, RoadmapNode, NodeProgress
+from .models import Roadmap, RoadmapNode
 from .serializers import RoadmapSerializer, RoadmapListSerializer, RoadmapNodeSerializer
 
 
