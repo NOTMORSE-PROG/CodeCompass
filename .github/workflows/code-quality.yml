@@ -36,10 +36,10 @@ jobs:
       # Fail immediately if any .env file is tracked by git
       - name: Check no .env files are committed
         run: |
-          if git ls-files | grep -qE '(^|\/)\.env(\.|$)'; then
+          if git ls-files | grep -E '(^|\/)\.env(\.|$)' | grep -qv '\.example$'; then
             echo "ERROR: A .env file is tracked by git!"
             echo "Fix it with: git rm --cached .env"
-            git ls-files | grep -E '(^|\/)\.env(\.|$)'
+            git ls-files | grep -E '(^|\/)\.env(\.|$)' | grep -v '\.example$'
             exit 1
           fi
           echo "OK: No .env files are tracked."
