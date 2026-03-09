@@ -120,3 +120,28 @@ class NodeProgress(models.Model):
 
     class Meta:
         unique_together = ('user', 'node')
+
+
+class AssessmentSession(models.Model):
+    """
+    Stores one attempt at the AI-generated quiz for a YouTube resource.
+    questions_json holds correct answers server-side — never sent to the client.
+    """
+    user = models.ForeignKey(
+        'accounts.CustomUser', on_delete=models.CASCADE,
+        related_name='assessment_sessions'
+    )
+    resource = models.ForeignKey(
+        NodeResource, on_delete=models.CASCADE,
+        related_name='assessment_sessions'
+    )
+    questions_json = models.JSONField()  # full questions WITH correct answers
+    passed = models.BooleanField(null=True)   # null = not yet submitted
+    score = models.IntegerField(null=True)    # 0-100
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'AssessmentSession(user={self.user_id}, resource={self.resource_id}, passed={self.passed})'

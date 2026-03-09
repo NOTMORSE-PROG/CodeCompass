@@ -14,7 +14,7 @@ class OnboardingSession(models.Model):
         related_name='onboarding_session',
     )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.IN_PROGRESS)
-    quiz_summary = models.JSONField(default=dict)
+    onboarding_summary = models.JSONField(default=dict)
     started_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 

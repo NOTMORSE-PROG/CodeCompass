@@ -47,7 +47,7 @@ class XPEvent(models.Model):
         BADGE_EARNED = 'badge_earned', 'Earned Badge'
         CERT_EARNED = 'cert_earned', 'Earned Certification'
         PROFILE_COMPLETED = 'profile_completed', 'Completed Profile'
-        QUIZ_COMPLETED = 'quiz_completed', 'Completed Onboarding Quiz'
+        ONBOARDING_COMPLETED = 'onboarding_completed', 'Completed Onboarding'
 
     user = models.ForeignKey('accounts.CustomUser', on_delete=models.CASCADE, related_name='xp_events')
     event_type = models.CharField(max_length=25, choices=EventType.choices)

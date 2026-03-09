@@ -6,7 +6,8 @@ django-environ==0.11.2
 
 # Authentication
 djangorestframework-simplejwt==5.3.1
-google-auth>=2.38.0     # Google OAuth ID token verification
+google-auth>=2.38.0             # Google OAuth ID token verification
+google-api-python-client>=2.0   # YouTube Data API v3
 
 # Database — Neon PostgreSQL
 psycopg2-binary==2.9.10
@@ -31,6 +32,7 @@ django-celery-beat==2.7.0
 
 # HTTP client (YouTube + Job APIs)
 requests==2.32.3
+youtube-transcript-api==0.6.3   # Fetch YouTube captions for quiz generation
 
 # Job APIs — Careerjet official Python client (PH locale, free partner)
 careerjet-api==3.2

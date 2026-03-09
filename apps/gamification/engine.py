@@ -13,12 +13,12 @@ XP_AMOUNTS = {
     'badge_earned': 25,
     'cert_earned': 200,
     'profile_completed': 50,
-    'quiz_completed': 75,
+    'onboarding_completed': 75,
 }
 
 # Trigger types and their thresholds for badge awarding
 BADGE_TRIGGERS = {
-    'quiz_completed': 1,
+    'onboarding_completed': 1,
     'roadmap_generated': 1,
     'node_completed': [1, 10],      # First node, then 10 nodes
     'streak_days': [7, 30],

@@ -80,8 +80,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         history = await self.get_message_history()
 
         # Pick system prompt based on session context
-        from .groq_client import stream_chat, ONBOARDING_SYSTEM_PROMPT
-        system_prompt = ONBOARDING_SYSTEM_PROMPT if self.chat_session.context_type == 'onboarding' else None
+        from .groq_client import stream_chat, get_onboarding_system_prompt
+        system_prompt = get_onboarding_system_prompt(self.user.role) if self.chat_session.context_type == 'onboarding' else None
 
         # Stream AI response
         full_response = ''
@@ -126,12 +126,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def _send_greeting(self):
         """Stream the AI's opening onboarding question to the client."""
-        from .groq_client import stream_chat, ONBOARDING_SYSTEM_PROMPT
+        from .groq_client import stream_chat, get_onboarding_system_prompt
 
         trigger = [{'role': 'user', 'content': '__start__'}]
         full_response = ''
         try:
-            for chunk in stream_chat(trigger, self.user.role, system_prompt=ONBOARDING_SYSTEM_PROMPT):
+            for chunk in stream_chat(trigger, self.user.role, system_prompt=get_onboarding_system_prompt(self.user.role)):
                 full_response += chunk
                 await self.send(text_data=json.dumps({
                     'type': 'stream_chunk',

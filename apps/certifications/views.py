@@ -1,4 +1,6 @@
 from rest_framework import generics, permissions
+from rest_framework.filters import SearchFilter
+from django_filters.rest_framework import DjangoFilterBackend
 from .models import Certification, UserCertification
 from .serializers import CertificationSerializer, UserCertificationSerializer
 
@@ -7,8 +9,9 @@ class CertificationListView(generics.ListAPIView):
     """GET /api/certifications/ — Browse all certifications."""
     serializer_class = CertificationSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, SearchFilter]
+    filterset_fields = ['provider', 'level', 'track', 'is_free']
     search_fields = ['name', 'abbreviation', 'description']
-    filterset_fields = ['provider', 'level', 'is_free']
 
     def get_queryset(self):
         return Certification.objects.filter(is_active=True)
@@ -33,3 +36,19 @@ class UserCertificationDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_queryset(self):
         return UserCertification.objects.filter(user=self.request.user)
+
+    def perform_update(self, serializer):
+        old_status = self.get_object().status
+        instance = serializer.save()
+        # Award XP when user marks a cert as passed for the first time
+        if instance.status == 'passed' and old_status != 'passed':
+            try:
+                from apps.gamification.engine import award_xp
+                award_xp(
+                    self.request.user,
+                    'cert_earned',
+                    reference_id=instance.certification_id,
+                    description=f'Earned certification: {instance.certification.name}',
+                )
+            except Exception:
+                pass  # Never block the update if XP fails

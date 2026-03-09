@@ -5,5 +5,5 @@ from .models import OnboardingSession
 class OnboardingSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = OnboardingSession
-        fields = ['id', 'status', 'quiz_summary', 'started_at', 'completed_at']
-        read_only_fields = ['id', 'quiz_summary', 'started_at', 'completed_at']
+        fields = ['id', 'status', 'onboarding_summary', 'started_at', 'completed_at']
+        read_only_fields = ['id', 'onboarding_summary', 'started_at', 'completed_at']
