@@ -779,7 +779,7 @@ def _fetch_transcript(video_id: str, max_chars: int = 6000) -> str:
         except NoTranscriptFound:
             transcript = transcript_list.find_generated_transcript(['en'])
         entries = transcript.fetch()
-        full_text = ' '.join(entry['text'] for entry in entries)
+        full_text = ' '.join(entry.text if hasattr(entry, 'text') else entry['text'] for entry in entries)
         full_text = ' '.join(full_text.split())   # normalise whitespace
 
         if len(full_text) <= max_chars:
