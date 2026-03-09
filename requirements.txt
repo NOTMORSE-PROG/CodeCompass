@@ -32,7 +32,7 @@ django-celery-beat==2.7.0
 
 # HTTP client (YouTube + Job APIs)
 requests==2.32.3
-youtube-transcript-api==0.6.3   # Fetch YouTube captions for quiz generation
+youtube-transcript-api==1.2.4   # Fetch YouTube captions for quiz generation
 
 # Job APIs — Careerjet official Python client (PH locale, free partner)
 careerjet-api==3.2
