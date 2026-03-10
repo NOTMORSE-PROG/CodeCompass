@@ -5,7 +5,6 @@ Never hardcode credentials here.
 """
 from pathlib import Path
 from datetime import timedelta
-import urllib.parse as _urlparse
 import environ
 
 # Base directory is backend/
@@ -105,26 +104,15 @@ DATABASES['default']['OPTIONS']['sslmode'] = 'require'
 # ===========================================================================
 REDIS_URL = env('REDIS_URL', default='redis://localhost:6379/0')
 
-# Parse Upstash/managed Redis TLS URLs into explicit connection params.
-# redis-py 5.x requires ssl_cert_reqs as a string ('none'/'required') when
-# passing individual kwargs; the 'address' dict form does not propagate SSL kwargs.
-if REDIS_URL.startswith('rediss://'):
-    _u = _urlparse.urlparse(REDIS_URL)
-    _channel_host = {
-        'host': _u.hostname,
-        'port': _u.port or 6379,
-        'password': _u.password,
-        'ssl': True,
-        'ssl_cert_reqs': 'none',
-    }
-else:
-    _channel_host = REDIS_URL
-
+# Pass the URL directly — redis-py recognises the rediss:// scheme and uses
+# SSLConnection internally. Passing explicit ssl=True kwargs to the connection
+# class fails on redis-py 4.4+ because AbstractConnection no longer accepts
+# that argument (only SSLConnection does).
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [_channel_host],
+            'hosts': [REDIS_URL],
         },
     },
 }
