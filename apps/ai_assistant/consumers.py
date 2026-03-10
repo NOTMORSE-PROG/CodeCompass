@@ -5,8 +5,8 @@ Flow:
 1. Client connects to WS /ws/chat/{session_id}/
 2. Client sends JSON: {"message": "Paano ako magiging fullstack developer?"}
 3. Consumer authenticates via JWT in query string or cookie
-4. Loads chat history for context
-5. Calls Groq stream=True
+4. Loads chat history for context + user profile for personalization
+5. Calls Groq stream=True with personalized system prompt
 6. Streams each chunk back: {"type": "stream_chunk", "content": "..."}
 7. On finish: {"type": "stream_end", "message_id": 123}
 8. Saves complete assistant message to DB
@@ -53,6 +53,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             await self.close(code=4004)
             return
 
+        # Load personalized user context for system prompt injection
+        self.user_context = await self.load_user_context()
+
         await self.accept()
 
         # For onboarding sessions, immediately stream an AI greeting
@@ -79,9 +82,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Build message history for context (last 20 messages)
         history = await self.get_message_history()
 
-        # Pick system prompt based on session context
-        from .groq_client import stream_chat, get_onboarding_system_prompt
-        system_prompt = get_onboarding_system_prompt(self.user.role) if self.chat_session.context_type == 'onboarding' else None
+        # Pick system prompt based on session context + personalized user data
+        from .groq_client import stream_chat, get_onboarding_system_prompt, build_career_mentor_prompt
+        if self.chat_session.context_type == 'onboarding':
+            system_prompt = get_onboarding_system_prompt(self.user.role)
+        else:
+            system_prompt = build_career_mentor_prompt(
+                user_context=self.user_context,
+                mode=self.chat_session.context_type,
+            )
 
         # Stream AI response
         full_response = ''
@@ -177,6 +186,56 @@ class ChatConsumer(AsyncWebsocketConsumer):
             )
         except ChatSession.DoesNotExist:
             return None
+
+    @database_sync_to_async
+    def load_user_context(self) -> dict:
+        """Load personalized student context for system prompt injection."""
+        ctx = {
+            'name': getattr(self.user, 'full_name', '') or '',
+            'role': self.user.role or '',
+        }
+        # StudentProfile fields
+        try:
+            sp = self.user.student_profile
+            ctx.update({
+                'year_level': sp.year_level or '',
+                'program': sp.program or '',
+                'target_career': sp.target_career or '',
+                'current_skills': sp.current_skills or [],
+            })
+        except Exception:
+            pass
+        # Onboarding summary
+        try:
+            summary = self.user.onboarding_session.onboarding_summary or {}
+            ctx.update({
+                'background': summary.get('background', ''),
+                'interests': summary.get('interests', []),
+                'career_goal': summary.get('career_goal', '') or ctx.get('target_career', ''),
+                'learning_style': summary.get('learning_style', ''),
+                'recommended_path': summary.get('recommended_path', ''),
+            })
+        except Exception:
+            pass
+        # Primary roadmap progress
+        try:
+            from apps.roadmaps.models import Roadmap
+            roadmap = (
+                Roadmap.objects.filter(user=self.user, is_primary=True).first()
+                or Roadmap.objects.filter(user=self.user).order_by('-created_at').first()
+            )
+            if roadmap:
+                nodes = list(roadmap.nodes.order_by('position_y').values('title', 'status'))
+                ctx['roadmap_title'] = roadmap.title
+                ctx['roadmap_path'] = roadmap.career_path
+                ctx['roadmap_pct'] = roadmap.completion_percentage
+                ctx['completed_nodes'] = [n['title'] for n in nodes if n['status'] == 'completed']
+                ctx['current_node'] = next(
+                    (n['title'] for n in nodes if n['status'] == 'in_progress'), None
+                )
+        except Exception:
+            pass
+        return ctx
 
     @database_sync_to_async
     def save_message(self, role: str, content: str):

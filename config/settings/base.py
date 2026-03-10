@@ -149,7 +149,7 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
+    'PAGE_SIZE': 10,
     'DEFAULT_RENDERER_CLASSES': [
         'djangorestframework_camel_case.render.CamelCaseJSONRenderer',
     ],
@@ -224,8 +224,9 @@ FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:5173')
 GROQ_API_KEY = env('GROQ_API_KEY', default='')
 YOUTUBE_API_KEY = env('YOUTUBE_API_KEY', default='')
 GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID', default='')
-# Job APIs — Careerjet (primary, free PH locale) + JSearch/RapidAPI (fallback)
+# Job APIs — priority: Careerjet HTTP (primary) → Jooble (fallback 1) → JSearch (fallback 2)
 CAREERJET_AFFID = env('CAREERJET_AFFID', default='')
+JOOBLE_API_KEY = env('JOOBLE_API_KEY', default='')
 JSEARCH_RAPIDAPI_KEY = env('JSEARCH_RAPIDAPI_KEY', default='')
 
 # ===========================================================================
