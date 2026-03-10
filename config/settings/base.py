@@ -5,6 +5,7 @@ Never hardcode credentials here.
 """
 from pathlib import Path
 from datetime import timedelta
+import ssl as _ssl
 import environ
 
 # Base directory is backend/
@@ -104,11 +105,20 @@ DATABASES['default']['OPTIONS']['sslmode'] = 'require'
 # ===========================================================================
 REDIS_URL = env('REDIS_URL', default='redis://localhost:6379/0')
 
+# channels_redis needs an explicit SSL context for Upstash rediss:// connections
+if REDIS_URL.startswith('rediss://'):
+    _ssl_ctx = _ssl.SSLContext(_ssl.PROTOCOL_TLS_CLIENT)
+    _ssl_ctx.check_hostname = False
+    _ssl_ctx.verify_mode = _ssl.CERT_NONE
+    _channel_hosts = [{'address': REDIS_URL, 'ssl': _ssl_ctx}]
+else:
+    _channel_hosts = [REDIS_URL]
+
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
-            'hosts': [REDIS_URL],
+            'hosts': _channel_hosts,
         },
     },
 }
