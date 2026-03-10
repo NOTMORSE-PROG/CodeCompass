@@ -246,6 +246,47 @@ JOOBLE_API_KEY = env('JOOBLE_API_KEY', default='')
 JSEARCH_RAPIDAPI_KEY = env('JSEARCH_RAPIDAPI_KEY', default='')
 
 # ===========================================================================
+# Logging — structured output for Render/production log tailing
+# ===========================================================================
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {name} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'ai_assistant': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'channels': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'daphne': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
+# ===========================================================================
 # Celery
 # ===========================================================================
 CELERY_BROKER_URL = REDIS_URL

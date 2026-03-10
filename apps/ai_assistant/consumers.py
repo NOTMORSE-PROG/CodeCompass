@@ -16,10 +16,13 @@ Onboarding sessions (context_type='onboarding'):
 - Automatically stream a greeting message on connect (no user trigger needed)
 """
 import json
+import logging
 import re
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
+
+logger = logging.getLogger('ai_assistant.consumers')
 
 
 def _extract_suggestions(text: str):
@@ -42,16 +45,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.session_id = self.scope['url_route']['kwargs']['session_id']
         self.user = self.scope.get('user')
 
+        logger.info('[WS-CONNECT] session_id=%s user=%s', self.session_id, self.user)
+
         # Reject unauthenticated connections
         if not self.user or isinstance(self.user, AnonymousUser):
+            logger.warning('[WS-CONNECT] Rejected — anonymous user for session %s', self.session_id)
             await self.close(code=4001)
             return
 
         # Verify the session belongs to this user
         self.chat_session = await self.get_session()
         if self.chat_session is None:
+            logger.warning('[WS-CONNECT] Rejected — session %s not found for user %s', self.session_id, self.user.id)
             await self.close(code=4004)
             return
+
+        logger.info('[WS-CONNECT] Accepted session %s for user %s', self.session_id, self.user.id)
 
         # Load personalized user context for system prompt injection
         self.user_context = await self.load_user_context()
