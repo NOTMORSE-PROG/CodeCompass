@@ -5,6 +5,7 @@ Never hardcode credentials here.
 """
 from pathlib import Path
 from datetime import timedelta
+import urllib.parse as _urlparse
 import environ
 
 # Base directory is backend/
@@ -104,15 +105,24 @@ DATABASES['default']['OPTIONS']['sslmode'] = 'require'
 # ===========================================================================
 REDIS_URL = env('REDIS_URL', default='redis://localhost:6379/0')
 
-# RedisPubSubChannelLayer with ssl_cert_reqs=None is the documented pattern
-# for managed Redis services (Upstash, Heroku) that use self-managed TLS certs.
-_channel_host = {'address': REDIS_URL}
+# Parse Upstash/managed Redis TLS URLs into explicit connection params.
+# redis-py 5.x requires ssl_cert_reqs as a string ('none'/'required') when
+# passing individual kwargs; the 'address' dict form does not propagate SSL kwargs.
 if REDIS_URL.startswith('rediss://'):
-    _channel_host['ssl_cert_reqs'] = None
+    _u = _urlparse.urlparse(REDIS_URL)
+    _channel_host = {
+        'host': _u.hostname,
+        'port': _u.port or 6379,
+        'password': _u.password,
+        'ssl': True,
+        'ssl_cert_reqs': 'none',
+    }
+else:
+    _channel_host = REDIS_URL
 
 CHANNEL_LAYERS = {
     'default': {
-        'BACKEND': 'channels_redis.pubsub.RedisPubSubChannelLayer',
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
         'CONFIG': {
             'hosts': [_channel_host],
         },
