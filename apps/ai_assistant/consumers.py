@@ -41,28 +41,39 @@ def _extract_suggestions(text: str):
 class ChatConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
-        """Accept the WebSocket immediately, then validate auth and session.
+        """Accept the WebSocket immediately, then resolve user and session.
 
-        accept() MUST be called before any DB queries — Render's reverse proxy
-        will drop the connection if the HTTP 101 upgrade response takes more
-        than a few seconds, and our DB round-trips (token → user, session
-        lookup, user context) easily push past that limit.
+        Security model:
+        - Middleware validates the JWT signature/expiry cryptographically
+          (instant, no DB) and stores the payload in scope['jwt_payload'].
+        - accept() is called first so Render's reverse proxy doesn't drop
+          the connection while DB queries are in flight.
+        - User is fetched from DB here, after the handshake is complete.
+          If the token is invalid/missing or the session doesn't belong to
+          this user, we close immediately with a specific code (4001/4004).
         """
         self.session_id = self.scope['url_route']['kwargs']['session_id']
-        self.user = self.scope.get('user')
 
-        # Accept the handshake immediately so the proxy doesn't time out.
+        # Complete the HTTP 101 handshake immediately.
         await self.accept()
 
-        logger.info('[WS-CONNECT] session_id=%s user=%s', self.session_id, self.user)
-
-        # Reject unauthenticated connections (JWT already checked in middleware)
-        if not self.user or isinstance(self.user, AnonymousUser):
-            logger.warning('[WS-CONNECT] Rejected — anonymous user for session %s', self.session_id)
+        # Resolve JWT payload set by middleware (crypto-only, no DB hit).
+        payload = self.scope.get('jwt_payload')
+        if not payload:
+            logger.warning('[WS-CONNECT] Rejected — no valid JWT for session %s', self.session_id)
             await self.close(code=4001)
             return
 
-        # Verify the session belongs to this user
+        # Now fetch the User from DB (safe to do after accept).
+        self.user = await self.get_user_from_payload(payload)
+        if self.user is None or isinstance(self.user, AnonymousUser):
+            logger.warning('[WS-CONNECT] Rejected — user not found for session %s', self.session_id)
+            await self.close(code=4001)
+            return
+
+        logger.info('[WS-CONNECT] session_id=%s user=%s', self.session_id, self.user)
+
+        # Verify the session belongs to this user.
         self.chat_session = await self.get_session()
         if self.chat_session is None:
             logger.warning('[WS-CONNECT] Rejected — session %s not found for user %s', self.session_id, self.user.id)
@@ -71,7 +82,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         logger.info('[WS-CONNECT] Accepted session %s for user %s', self.session_id, self.user.id)
 
-        # Load personalized user context for system prompt injection
+        # Load personalized user context for system prompt injection.
         self.user_context = await self.load_user_context()
 
         # For onboarding sessions, immediately stream an AI greeting
@@ -190,6 +201,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
     # -------------------------------------------------------------------------
     # Database helpers (sync-to-async wrappers)
     # -------------------------------------------------------------------------
+
+    @database_sync_to_async
+    def get_user_from_payload(self, payload):
+        """Fetch the User row from DB using the user_id from a validated JWT payload."""
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            return User.objects.get(id=payload['user_id'])
+        except (User.DoesNotExist, KeyError):
+            return None
 
     @database_sync_to_async
     def get_session(self):
