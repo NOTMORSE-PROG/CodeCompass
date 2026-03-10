@@ -5,7 +5,6 @@ Never hardcode credentials here.
 """
 from pathlib import Path
 from datetime import timedelta
-import ssl as _ssl
 import environ
 
 # Base directory is backend/
@@ -105,20 +104,17 @@ DATABASES['default']['OPTIONS']['sslmode'] = 'require'
 # ===========================================================================
 REDIS_URL = env('REDIS_URL', default='redis://localhost:6379/0')
 
-# channels_redis needs an explicit SSL context for Upstash rediss:// connections
+# RedisPubSubChannelLayer with ssl_cert_reqs=None is the documented pattern
+# for managed Redis services (Upstash, Heroku) that use self-managed TLS certs.
+_channel_host = {'address': REDIS_URL}
 if REDIS_URL.startswith('rediss://'):
-    _ssl_ctx = _ssl.SSLContext(_ssl.PROTOCOL_TLS_CLIENT)
-    _ssl_ctx.check_hostname = False
-    _ssl_ctx.verify_mode = _ssl.CERT_NONE
-    _channel_hosts = [{'address': REDIS_URL, 'ssl': _ssl_ctx}]
-else:
-    _channel_hosts = [REDIS_URL]
+    _channel_host['ssl_cert_reqs'] = None
 
 CHANNEL_LAYERS = {
     'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'BACKEND': 'channels_redis.pubsub.RedisPubSubChannelLayer',
         'CONFIG': {
-            'hosts': _channel_hosts,
+            'hosts': [_channel_host],
         },
     },
 }
