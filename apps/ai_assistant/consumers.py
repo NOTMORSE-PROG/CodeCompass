@@ -41,13 +41,22 @@ def _extract_suggestions(text: str):
 class ChatConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
-        """Authenticate user and load the chat session."""
+        """Accept the WebSocket immediately, then validate auth and session.
+
+        accept() MUST be called before any DB queries — Render's reverse proxy
+        will drop the connection if the HTTP 101 upgrade response takes more
+        than a few seconds, and our DB round-trips (token → user, session
+        lookup, user context) easily push past that limit.
+        """
         self.session_id = self.scope['url_route']['kwargs']['session_id']
         self.user = self.scope.get('user')
 
+        # Accept the handshake immediately so the proxy doesn't time out.
+        await self.accept()
+
         logger.info('[WS-CONNECT] session_id=%s user=%s', self.session_id, self.user)
 
-        # Reject unauthenticated connections
+        # Reject unauthenticated connections (JWT already checked in middleware)
         if not self.user or isinstance(self.user, AnonymousUser):
             logger.warning('[WS-CONNECT] Rejected — anonymous user for session %s', self.session_id)
             await self.close(code=4001)
@@ -64,8 +73,6 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         # Load personalized user context for system prompt injection
         self.user_context = await self.load_user_context()
-
-        await self.accept()
 
         # For onboarding sessions, immediately stream an AI greeting
         if self.chat_session.context_type == 'onboarding':
