@@ -48,7 +48,7 @@ INSTALLED_APPS = [
     'apps.onboarding',
     'apps.roadmaps',
     'apps.ai_assistant',
-    'apps.mentorship',
+    'apps.resumes',
     'apps.resources',
     'apps.jobs',
     'apps.universities',

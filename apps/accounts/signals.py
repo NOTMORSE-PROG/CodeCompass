@@ -1,16 +1,15 @@
 """
-Auto-create StudentProfile or MentorProfile when a CustomUser is created.
-This ensures every user always has their role-specific profile ready.
+Auto-create StudentProfile when a CustomUser is created.
 """
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from .models import CustomUser, StudentProfile, MentorProfile
+from .models import CustomUser, StudentProfile
 
 
 @receiver(post_save, sender=CustomUser)
 def create_user_profile(sender, instance, created, **kwargs):
-    """Create the appropriate profile when a new user is registered."""
+    """Create a StudentProfile when a new user is registered."""
     if not created:
         return
 
@@ -25,6 +24,3 @@ def create_user_profile(sender, instance, created, **kwargs):
                 )
             },
         )
-
-    elif instance.role == CustomUser.Role.MENTOR:
-        MentorProfile.objects.get_or_create(user=instance)

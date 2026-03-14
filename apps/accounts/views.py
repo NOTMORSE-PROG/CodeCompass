@@ -12,13 +12,12 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
-from .models import CustomUser, StudentProfile, MentorProfile
-from .permissions import IsStudent, IsMentor
+from .models import CustomUser, StudentProfile
+from .permissions import IsStudent
 from .serializers import (
     RegisterSerializer,
     UserSerializer,
     StudentProfileSerializer,
-    MentorProfileSerializer,
     ChangePasswordSerializer,
     RoleTokenObtainPairSerializer,
 )
@@ -142,61 +141,6 @@ class StudentProfileView(generics.RetrieveUpdateAPIView):
 
 
 # ---------------------------------------------------------------------------
-# Mentor Profiles
-# ---------------------------------------------------------------------------
-
-class MentorListView(generics.ListAPIView):
-    """
-    GET /api/profiles/mentors/ — Browse available verified mentors.
-    Supports ?expertise=python&mentor_type=industry filtering.
-    """
-    serializer_class = MentorProfileSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        qs = MentorProfile.objects.filter(is_verified=True, is_available=True).select_related('user')
-        mentor_type = self.request.query_params.get('mentor_type')
-        if mentor_type:
-            qs = qs.filter(mentor_type=mentor_type)
-        return qs
-
-
-class MentorDetailView(generics.RetrieveAPIView):
-    """GET /api/profiles/mentors/{id}/ — Public mentor profile."""
-    serializer_class = MentorProfileSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_queryset(self):
-        return MentorProfile.objects.filter(is_verified=True).select_related('user')
-
-
-class OwnMentorProfileView(generics.RetrieveUpdateAPIView):
-    """
-    GET  /api/profiles/mentor/me/ — Mentor views their own profile
-    PUT  /api/profiles/mentor/me/ — Mentor updates their profile
-    """
-    serializer_class = MentorProfileSerializer
-    permission_classes = [IsMentor]
-
-    def get_object(self):
-        return self.request.user.mentor_profile
-
-
-@api_view(['POST'])
-@permission_classes([IsMentor])
-def mentor_apply_view(request):
-    """
-    POST /api/profiles/mentor/apply/
-    Mentor fills in their profile details — sets status to pending admin approval.
-    """
-    profile = request.user.mentor_profile
-    serializer = MentorProfileSerializer(profile, data=request.data, partial=True)
-    serializer.is_valid(raise_exception=True)
-    serializer.save()
-    return Response({'detail': 'Application submitted. Awaiting admin approval.'})
-
-
-# ---------------------------------------------------------------------------
 # Google OAuth
 # ---------------------------------------------------------------------------
 
@@ -254,10 +198,16 @@ class GoogleOAuthView(APIView):
                 'first_name': idinfo.get('given_name', ''),
                 'last_name': idinfo.get('family_name', ''),
                 'username': _generate_username(email),
-                # role intentionally left as None — user must choose in /auth/google-setup
+                # All users start as undergraduate; onboarding AI upgrades to
+                # incoming_student if they reveal they are pre-college
+                'role': CustomUser.Role.UNDERGRADUATE,
                 'is_active': True,
             },
         )
+
+        # Ensure StudentProfile exists for new Google users
+        if created:
+            StudentProfile.objects.get_or_create(user=user, defaults={'year_level': '1st'})
 
         access, refresh = _issue_tokens(user)
         return Response({
@@ -265,57 +215,4 @@ class GoogleOAuthView(APIView):
             'access': access,
             'refresh': refresh,
             'is_new_user': created,
-        })
-
-
-class SetRoleView(APIView):
-    """
-    POST /api/auth/set-role/
-    Allows a newly registered Google OAuth user to set their role before onboarding.
-    Only works while is_onboarded=False. Returns fresh JWT tokens with updated role claim.
-    Also ensures the correct profile (StudentProfile / MentorProfile) exists for the role.
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    VALID_ROLES = [
-        CustomUser.Role.INCOMING_STUDENT,
-        CustomUser.Role.UNDERGRADUATE,
-        CustomUser.Role.MENTOR,
-    ]
-
-    def post(self, request):
-        if request.user.is_onboarded:
-            return Response(
-                {'detail': 'Role cannot be changed after onboarding is complete.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        role = request.data.get('role')
-        if role not in self.VALID_ROLES:
-            return Response(
-                {'detail': f'Invalid role. Choose from: {", ".join(self.VALID_ROLES)}'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        user = request.user
-        user.role = role
-        # Mentors skip onboarding — they go straight to the app
-        if role == CustomUser.Role.MENTOR:
-            user.is_onboarded = True
-        user.save(update_fields=['role', 'is_onboarded'])
-
-        # Ensure the correct profile exists (signal only runs on creation, not role update)
-        if role in (CustomUser.Role.INCOMING_STUDENT, CustomUser.Role.UNDERGRADUATE):
-            StudentProfile.objects.get_or_create(
-                user=user,
-                defaults={'year_level': 'incoming' if role == CustomUser.Role.INCOMING_STUDENT else '1st'},
-            )
-        elif role == CustomUser.Role.MENTOR:
-            MentorProfile.objects.get_or_create(user=user)
-
-        access, refresh = _issue_tokens(user)
-        return Response({
-            'user': UserSerializer(user).data,
-            'access': access,
-            'refresh': refresh,
         })

@@ -182,7 +182,7 @@ def _fetch_jsearch(keywords: str, location: str, count: int) -> list:
                 'company':      job.get('employer_name', '')[:200],
                 'location':     loc[:200],
                 'salary_range': _format_jsearch_salary(job),
-                'description':  job.get('job_description', '')[:2000],
+                'description':  job.get('job_description', ''),
                 'apply_url':    job.get('job_apply_link', ''),
                 'job_type':     _map_jsearch_employment(job.get('job_employment_type', '') or ''),
                 'source':       'jsearch',

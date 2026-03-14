@@ -6,7 +6,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from .models import CustomUser, StudentProfile, MentorProfile
+from .models import CustomUser, StudentProfile
 
 
 class RoleTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -40,7 +40,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = [
             'id', 'email', 'username', 'first_name', 'last_name',
-            'role', 'password', 'password_confirm',
+            'password', 'password_confirm',
         ]
         extra_kwargs = {
             'first_name': {'required': True},
@@ -55,13 +55,13 @@ class RegisterSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         validated_data.pop('password_confirm')
         password = validated_data.pop('password')
+        # All new users start as undergraduate; onboarding AI will upgrade to
+        # incoming_student if the user reveals they are pre-college
         user = CustomUser(**validated_data)
+        user.role = CustomUser.Role.UNDERGRADUATE
         user.set_password(password)
-        # Mentors skip onboarding — they go straight to the app
-        if user.role == 'mentor':
-            user.is_onboarded = True
         user.save()
-        # Signal auto-creates StudentProfile or MentorProfile
+        # Signal auto-creates StudentProfile
         return user
 
 
@@ -92,27 +92,6 @@ class StudentProfileSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'user', 'xp_total', 'streak_count', 'created_at', 'updated_at']
-
-
-class MentorProfileSerializer(serializers.ModelSerializer):
-    """Mentor profile — used for mentor discovery page."""
-
-    user = UserSerializer(read_only=True)
-
-    class Meta:
-        model = MentorProfile
-        fields = [
-            'id', 'user', 'mentor_type', 'headline', 'bio',
-            'company', 'position', 'years_experience',
-            'expertise_areas', 'is_available', 'max_mentees', 'current_mentees_count',
-            'linkedin_url', 'github_url', 'portfolio_url',
-            'is_verified', 'avg_rating', 'total_reviews',
-            'created_at', 'updated_at',
-        ]
-        read_only_fields = [
-            'id', 'user', 'is_verified', 'verified_at',
-            'avg_rating', 'total_reviews', 'created_at', 'updated_at',
-        ]
 
 
 class ChangePasswordSerializer(serializers.Serializer):

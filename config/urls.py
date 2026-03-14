@@ -18,7 +18,7 @@ urlpatterns = [
     path('api/onboarding/', include('apps.onboarding.urls')),
     path('api/roadmaps/', include('apps.roadmaps.urls')),
     path('api/chat/', include('apps.ai_assistant.urls')),
-    path('api/mentorship/', include('apps.mentorship.urls')),
+    path('api/resumes/', include('apps.resumes.urls')),
     path('api/resources/', include('apps.resources.urls')),
     path('api/jobs/', include('apps.jobs.urls')),
     path('api/universities/', include('apps.universities.urls')),

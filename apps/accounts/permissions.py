@@ -37,26 +37,6 @@ class IsUndergraduate(BasePermission):
         )
 
 
-class IsMentor(BasePermission):
-    """Allow any mentor (verified or not)."""
-    def has_permission(self, request, view):
-        return (
-            request.user.is_authenticated
-            and request.user.role == CustomUser.Role.MENTOR
-        )
-
-
-class IsVerifiedMentor(BasePermission):
-    """Allow only admin-verified mentors."""
-    def has_permission(self, request, view):
-        return (
-            request.user.is_authenticated
-            and request.user.role == CustomUser.Role.MENTOR
-            and hasattr(request.user, 'mentor_profile')
-            and request.user.mentor_profile.is_verified
-        )
-
-
 class IsAdminUser(BasePermission):
     """Allow admin role or Django superuser."""
     def has_permission(self, request, view):
