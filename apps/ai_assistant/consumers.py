@@ -106,6 +106,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Save user message
         await self.save_message('user', user_message_text)
 
+        # Auto-generate session title from first user message
+        if not self.chat_session.title:
+            raw = user_message_text[:60]
+            # Truncate at last word boundary to avoid cutting mid-word
+            title = raw.rsplit(' ', 1)[0] if len(user_message_text) > 60 else raw
+            await self.update_session_title(title)
+            try:
+                await self.send(text_data=json.dumps({
+                    'type': 'session_title_updated',
+                    'title': title,
+                }))
+            except Exception:
+                pass
+
         # Build message history for context (last 20 messages)
         history = await self.get_message_history()
 
@@ -273,6 +287,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
         except Exception:
             pass
         return ctx
+
+    @database_sync_to_async
+    def update_session_title(self, title: str):
+        self.chat_session.title = title
+        self.chat_session.save(update_fields=['title'])
 
     @database_sync_to_async
     def save_message(self, role: str, content: str):

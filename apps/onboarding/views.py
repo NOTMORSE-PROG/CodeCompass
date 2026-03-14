@@ -123,6 +123,7 @@ def onboarding_status(request):
         return Response({
             'status': session.status,
             'is_onboarded': request.user.is_onboarded,
+            'onboarding_summary': session.onboarding_summary or {},
         })
     except OnboardingSession.DoesNotExist:
-        return Response({'status': 'not_started', 'is_onboarded': False})
+        return Response({'status': 'not_started', 'is_onboarded': False, 'onboarding_summary': {}})

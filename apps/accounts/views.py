@@ -6,6 +6,7 @@ from django.conf import settings
 from rest_framework import generics, status, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
@@ -44,12 +45,21 @@ def _issue_tokens(user):
     return str(refresh.access_token), str(refresh)
 
 
+class RegisterRateThrottle(AnonRateThrottle):
+    scope = 'register'
+
+
+class LoginRateThrottle(AnonRateThrottle):
+    scope = 'login'
+
+
 class LoginView(TokenObtainPairView):
     """
     POST /api/auth/login/
     Returns access + refresh JWT tokens with role, email embedded in payload.
     """
     serializer_class = RoleTokenObtainPairSerializer
+    throttle_classes = [LoginRateThrottle]
 
 
 class RegisterView(generics.CreateAPIView):
@@ -60,6 +70,7 @@ class RegisterView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [RegisterRateThrottle]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -153,6 +164,7 @@ class GoogleOAuthView(APIView):
     can redirect to /auth/google-setup for role selection.
     """
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [RegisterRateThrottle]
 
     def post(self, request):
         credential = request.data.get('credential')

@@ -1194,7 +1194,7 @@ def stream_chat(messages: list, user_role: str, system_prompt: str = None):
         messages=system_messages + messages,
         stream=True,
         temperature=0.8,
-        max_tokens=1024,
+        max_tokens=2048,
     )
 
     for chunk in stream:

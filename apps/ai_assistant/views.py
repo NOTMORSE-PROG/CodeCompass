@@ -25,17 +25,27 @@ class ChatSessionListCreateView(generics.ListCreateAPIView):
         serializer.save(user=self.request.user)
 
 
-class ChatSessionDetailView(generics.RetrieveDestroyAPIView):
+class ChatSessionDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
     GET    /api/chat/sessions/{session_id}/ - Get session with all messages
+    PATCH  /api/chat/sessions/{session_id}/ - Update session title
     DELETE /api/chat/sessions/{session_id}/ - Soft-delete (deactivate) session
     """
     serializer_class = ChatSessionSerializer
     permission_classes = [permissions.IsAuthenticated]
     lookup_field = 'session_id'
+    http_method_names = ['get', 'patch', 'delete', 'head', 'options']
 
     def get_queryset(self):
         return ChatSession.objects.filter(user=self.request.user)
+
+    def partial_update(self, request, *args, **kwargs):
+        # Only allow updating the title field
+        allowed = {k: v for k, v in request.data.items() if k == 'title'}
+        serializer = self.get_serializer(self.get_object(), data=allowed, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
         session = self.get_object()
