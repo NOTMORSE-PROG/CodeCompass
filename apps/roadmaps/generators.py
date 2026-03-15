@@ -7,6 +7,67 @@ from django.utils import timezone
 from .models import Roadmap, RoadmapNode, NodeResource
 
 
+_DIFF_WORDS = {
+    'very easy': 1, 'easy': 1, 'beginner': 1, 'low': 1, 'novice': 1,
+    'medium': 2, 'moderate': 2, 'normal': 2,
+    'intermediate': 3, 'average': 3,
+    'hard': 4, 'difficult': 4, 'challenging': 4,
+    'very hard': 5, 'expert': 5, 'advanced': 5, 'extreme': 5,
+}
+
+
+def _coerce_difficulty(v):
+    """Coerce AI-generated difficulty to int 1-5. Handles strings like 'hard', 'medium'."""
+    if isinstance(v, (int, float)):
+        return max(1, min(5, int(v)))
+    try:
+        return max(1, min(5, int(v)))
+    except (ValueError, TypeError):
+        return max(1, min(5, _DIFF_WORDS.get(str(v).lower().strip(), 1)))
+
+
+_TYPE_ORDER = {'skill': 0, 'assessment': 0, 'project': 1, 'certification': 2}
+
+
+def _fix_phase_structure(nodes_data):
+    """
+    Ensures cert phases contain ONLY certifications.
+    Splits into phase buckets by milestone, finds the first phase with
+    certifications, moves any non-cert nodes (skill, assessment, project)
+    to the phase just before it, then sorts each bucket by type order.
+    """
+    phases, current = [], {'milestone': None, 'nodes': []}
+    for node in nodes_data:
+        if node.get('node_type') == 'milestone':
+            phases.append(current)
+            current = {'milestone': node, 'nodes': []}
+        else:
+            current['nodes'].append(node)
+    phases.append(current)
+
+    cert_phase_idx = next(
+        (i for i, p in enumerate(phases)
+         if any(n.get('node_type') == 'certification' for n in p['nodes'])),
+        None
+    )
+    if cert_phase_idx and cert_phase_idx > 0:
+        for i in range(cert_phase_idx, len(phases)):
+            stray = [n for n in phases[i]['nodes'] if n.get('node_type') != 'certification']
+            if stray:
+                phases[cert_phase_idx - 1]['nodes'].extend(stray)
+                phases[i]['nodes'] = [n for n in phases[i]['nodes'] if n.get('node_type') == 'certification']
+
+    for phase in phases:
+        phase['nodes'].sort(key=lambda n: _TYPE_ORDER.get(n.get('node_type', 'skill'), 0))
+
+    result = []
+    for phase in phases:
+        if phase['milestone']:
+            result.append(phase['milestone'])
+        result.extend(phase['nodes'])
+    return result
+
+
 def save_roadmap_from_ai(roadmap: Roadmap, ai_data: dict) -> Roadmap:
     """
     Takes an existing (generating) Roadmap and the AI JSON dict,
@@ -20,7 +81,7 @@ def save_roadmap_from_ai(roadmap: Roadmap, ai_data: dict) -> Roadmap:
     roadmap.generated_at = timezone.now()
     roadmap.save()
 
-    nodes_data = ai_data.get('nodes', [])
+    nodes_data = _fix_phase_structure(ai_data.get('nodes', []))
 
     # Determine which indices start as 'available'.
     # The AI always leads with a milestone (Phase 1), which has no UI action.
@@ -55,7 +116,7 @@ def save_roadmap_from_ai(roadmap: Roadmap, ai_data: dict) -> Roadmap:
             position_y=node_data.get('position_y', i * 150),
             node_order=i,
             estimated_hours=node_data.get('estimated_hours', 5),
-            difficulty=max(1, min(5, node_data.get('difficulty', 1))),
+            difficulty=_coerce_difficulty(node_data.get('difficulty', 1)),
             xp_reward=node_data.get('xp_reward', 50),
             status=initial_status,
         )
@@ -87,4 +148,5 @@ def save_roadmap_from_ai(roadmap: Roadmap, ai_data: dict) -> Roadmap:
                 child_node.parent_node = node_id_map[parent_ai_id]
                 child_node.save(update_fields=['parent_node'])
 
+    roadmap.recalculate_completion()
     return roadmap

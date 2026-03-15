@@ -1,13 +1,69 @@
 """Roadmap views — generation, retrieval, node progress."""
+from django.db import models, transaction
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-
 from apps.accounts.permissions import IsStudent
 from apps.gamification.engine import award_xp
 from .models import Roadmap, RoadmapNode, NodeResource, AssessmentSession
 from .serializers import RoadmapSerializer, RoadmapListSerializer, RoadmapNodeSerializer
+
+# ---------------------------------------------------------------------------
+# Coercion helpers — used when AI sends string difficulty words or non-int values
+# ---------------------------------------------------------------------------
+_DIFFICULTY_WORDS = {
+    'very easy': 1, 'easy': 1, 'beginner': 1, 'low': 1, 'novice': 1,
+    'medium': 2, 'moderate': 2, 'normal': 2,
+    'intermediate': 3, 'average': 3,
+    'hard': 4, 'difficult': 4, 'challenging': 4,
+    'very hard': 5, 'expert': 5, 'advanced': 5, 'extreme': 5,
+}
+
+
+def _to_int(val, default, min_val=1, max_val=None):
+    """Coerce val to int. Maps difficulty word strings. Clamps to [min_val, max_val]."""
+    if val is None:
+        return default
+    if isinstance(val, str):
+        mapped = _DIFFICULTY_WORDS.get(val.lower().strip())
+        if mapped is not None:
+            val = mapped
+        else:
+            try:
+                val = int(val)
+            except ValueError:
+                return default
+    try:
+        result = int(val)
+        if max_val is not None:
+            result = max(min_val, min(max_val, result))
+        else:
+            result = max(min_val, result)
+        return result
+    except (ValueError, TypeError):
+        return default
+
+
+_VALID_NODE_TYPES = {'skill', 'assessment', 'project', 'certification'}
+_NODE_TYPE_ALIASES = {
+    'core_skill': 'skill', 'hard_skill': 'skill', 'knowledge': 'skill',
+    'topic': 'skill', 'lesson': 'skill', 'skill_node': 'skill',
+    'hands_on': 'project', 'build': 'project', 'capstone': 'project',
+    'cert': 'certification', 'certificate': 'certification',
+    'quiz': 'assessment', 'test': 'assessment',
+}
+
+
+def _coerce_node_type(val):
+    """Coerce AI-generated node_type strings to valid model choices. Defaults to 'skill'."""
+    if not val:
+        return 'skill'
+    v = str(val).lower().strip().replace(' ', '_').replace('-', '_')
+    if v in _VALID_NODE_TYPES:
+        return v
+    return _NODE_TYPE_ALIASES.get(v, 'skill')
 
 
 class RoadmapListView(generics.ListAPIView):
@@ -56,6 +112,15 @@ def generate_roadmap(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    # Block if user already has a live roadmap
+    if Roadmap.objects.filter(user=user, status=Roadmap.Status.ACTIVE).exists():
+        return Response(
+            {'detail': 'You already have an active roadmap.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    # Clean up any stuck GENERATING roadmaps (e.g., from a previous failed attempt)
+    Roadmap.objects.filter(user=user, status=Roadmap.Status.GENERATING).delete()
+
     # Create a placeholder roadmap with 'generating' status
     roadmap = Roadmap.objects.create(
         user=user,
@@ -67,7 +132,7 @@ def generate_roadmap(request):
     try:
         ai_data = ai_generate(onboarding_summary)
         save_roadmap_from_ai(roadmap, ai_data)
-        award_xp(user, 'roadmap_generated', roadmap.id, 'Generated your first personalized roadmap!')
+        award_xp(user, 'roadmap_generated', roadmap.id, 'Generated your first personalized roadmap!', unique_per_user=True)
     except Exception as e:
         roadmap.delete()
         return Response(
@@ -134,6 +199,62 @@ def repair_roadmap(request, roadmap_pk):
 
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
+def fix_structure(request, roadmap_pk):
+    """
+    POST /api/roadmaps/{id}/fix-structure/
+    Reorders nodes so all project nodes appear before any certification nodes.
+    Dynamic: works for any number of phases — no hardcoded phase names or positions.
+    Idempotent: calling on an already-correct roadmap changes nothing.
+    """
+    try:
+        roadmap = Roadmap.objects.get(pk=roadmap_pk, user=request.user)
+    except Roadmap.DoesNotExist:
+        return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    nodes = list(roadmap.nodes.order_by('node_order'))
+    phases, current = [], {'milestone': None, 'nodes': []}
+    for node in nodes:
+        if node.node_type == 'milestone':
+            phases.append(current)
+            current = {'milestone': node, 'nodes': []}
+        else:
+            current['nodes'].append(node)
+    phases.append(current)
+
+    TYPE_ORDER = {'skill': 0, 'assessment': 0, 'project': 1, 'certification': 2}
+    cert_phase_idx = next(
+        (i for i, p in enumerate(phases)
+         if any(n.node_type == 'certification' for n in p['nodes'])),
+        None
+    )
+    if cert_phase_idx and cert_phase_idx > 0:
+        for i in range(cert_phase_idx, len(phases)):
+            stray = [n for n in phases[i]['nodes'] if n.node_type != 'certification']
+            if stray:
+                phases[cert_phase_idx - 1]['nodes'].extend(stray)
+                phases[i]['nodes'] = [n for n in phases[i]['nodes'] if n.node_type == 'certification']
+
+    for phase in phases:
+        phase['nodes'].sort(key=lambda n: TYPE_ORDER.get(n.node_type, 0))
+
+    flat = []
+    for phase in phases:
+        if phase['milestone']:
+            flat.append(phase['milestone'])
+        flat.extend(phase['nodes'])
+
+    for i, node in enumerate(flat):
+        if node.node_order != i:
+            node.node_order = i
+            node.save(update_fields=['node_order'])
+
+    roadmap.recalculate_completion()
+    from .serializers import RoadmapSerializer
+    return Response(RoadmapSerializer(roadmap).data)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
 def fetch_node_resources(request, roadmap_pk, node_pk):
     """
     POST /api/roadmaps/{id}/nodes/{nid}/fetch-resources/
@@ -163,59 +284,84 @@ def update_node_status(request, roadmap_pk, node_pk):
     PATCH /api/roadmaps/{id}/nodes/{nid}/
     Update a node's status (e.g., mark as in_progress or completed).
     """
-    try:
-        node = RoadmapNode.objects.get(
-            pk=node_pk,
-            roadmap__pk=roadmap_pk,
-            roadmap__user=request.user,
-        )
-    except RoadmapNode.DoesNotExist:
-        return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
-
     new_status = request.data.get('status')
     valid_statuses = [s.value for s in RoadmapNode.Status]
     if new_status not in valid_statuses:
         return Response({'detail': f'Invalid status. Must be one of: {valid_statuses}'}, status=400)
 
-    # Gate: require passing all video quizzes before marking completed
-    if new_status == 'completed':
-        youtube_resources = node.resources.filter(
-            resource_type='youtube_video'
-        ).exclude(url__in=['', 'yt:unavailable'])
-        if youtube_resources.exists():
-            passed_ids = AssessmentSession.objects.filter(
-                user=request.user,
-                resource__in=youtube_resources,
-                passed=True,
-            ).values_list('resource_id', flat=True)
-            unpassed = youtube_resources.exclude(id__in=passed_ids)
-            if unpassed.exists():
-                return Response(
-                    {'detail': 'Pass all video quizzes first.'},
-                    status=status.HTTP_400_BAD_REQUEST,
+    xp_awarded = False
+
+    with transaction.atomic():
+        # Lock the node row so concurrent requests queue behind this one instead of racing.
+        try:
+            node = RoadmapNode.objects.select_for_update().get(
+                pk=node_pk,
+                roadmap__pk=roadmap_pk,
+                roadmap__user=request.user,
+            )
+        except RoadmapNode.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Validate state transition — only available/in_progress nodes can be advanced.
+        # Locked nodes cannot be interacted with, and completed nodes cannot be reverted.
+        _VALID_TRANSITIONS = {
+            'available': {'in_progress', 'completed'},
+            'in_progress': {'in_progress', 'completed'},
+        }
+        if node.status not in _VALID_TRANSITIONS or new_status not in _VALID_TRANSITIONS[node.status]:
+            return Response(
+                {'detail': f'Cannot transition node from "{node.status}" to "{new_status}".'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Gate: require passing all video quizzes before marking completed
+        if new_status == 'completed':
+            youtube_resources = node.resources.filter(
+                resource_type='youtube_video'
+            ).exclude(url__in=['', 'yt:unavailable'])
+            if youtube_resources.exists():
+                passed_ids = AssessmentSession.objects.filter(
+                    user=request.user,
+                    resource__in=youtube_resources,
+                    passed=True,
+                ).values_list('resource_id', flat=True)
+                unpassed = youtube_resources.exclude(id__in=passed_ids)
+                if unpassed.exists():
+                    return Response(
+                        {'detail': 'Pass all video quizzes first.'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
+        node.status = new_status
+        if new_status == 'completed' and not node.completed_at:
+            node.completed_at = timezone.now()
+            # Save first so the second concurrent request (waiting on the lock) sees
+            # completed_at already set and skips the XP block entirely.
+            node.save()
+            from apps.gamification.models import XPEvent as _XPEvent
+            if not _XPEvent.objects.filter(
+                user=request.user, event_type='node_completed', reference_id=node.id
+            ).exists():
+                award_xp(
+                    request.user,
+                    'node_completed',
+                    node.id,
+                    f'Completed: {node.title}',
+                    xp_override=node.xp_reward,
                 )
+                xp_awarded = True
+            # Update roadmap completion %
+            node.roadmap.recalculate_completion()
+            # Unlock child nodes, auto-completing any milestone children
+            _unlock_children(node)
+        else:
+            node.save()
 
-    node.status = new_status
-    if new_status == 'completed' and not node.completed_at:
-        node.completed_at = timezone.now()
-        # Award XP for completing the node
-        award_xp(
-            request.user,
-            'node_completed',
-            node.id,
-            f'Completed: {node.title}',
-            xp_override=node.xp_reward,
-        )
-        # Update roadmap completion %
-        node.roadmap.recalculate_completion()
-        # Unlock child nodes, auto-completing any milestone children
-        _unlock_children(node)
-
-    node.save()
     node.refresh_from_db()
     return Response({
         'node': RoadmapNodeSerializer(node).data,
         'completionPercentage': str(node.roadmap.completion_percentage),
+        'xpAwarded': xp_awarded,
     })
 
 
@@ -398,3 +544,99 @@ def submit_assessment(request, roadmap_pk, node_pk, resource_pk, session_pk):
         'totalQuestions': len(questions),
         'results': results,
     })
+
+
+# ---------------------------------------------------------------------------
+# AI-assisted roadmap content editing
+# ---------------------------------------------------------------------------
+
+@api_view(['PATCH'])
+@permission_classes([permissions.IsAuthenticated])
+def edit_roadmap_meta(request, roadmap_pk):
+    """
+    PATCH /api/roadmaps/{id}/edit/
+    Edit roadmap metadata: title, description, estimated_weeks.
+    Called when the AI proposes a roadmap-level change and the user clicks Apply.
+    """
+    roadmap = get_object_or_404(Roadmap, pk=roadmap_pk, user=request.user)
+    allowed = {'title', 'description', 'estimated_weeks'}
+    for field in allowed & set(request.data.keys()):
+        setattr(roadmap, field, request.data[field])
+    roadmap.save()
+    return Response(RoadmapSerializer(roadmap).data)
+
+
+@api_view(['PATCH'])
+@permission_classes([permissions.IsAuthenticated])
+def edit_node_content(request, roadmap_pk, node_pk):
+    """
+    PATCH /api/roadmaps/{id}/nodes/{nid}/edit/
+    Edit node content: title, description, estimated_hours, difficulty.
+    Does NOT touch node status or progress — only textual/structural metadata.
+    """
+    node = get_object_or_404(
+        RoadmapNode, pk=node_pk, roadmap__pk=roadmap_pk, roadmap__user=request.user
+    )
+    allowed = {'title', 'description', 'estimated_hours', 'difficulty'}
+    # node_type excluded — changing type would break phase structure
+    COERCE_INT = {
+        'estimated_hours': lambda v: _to_int(v, default=5, min_val=1),
+        'difficulty':      lambda v: _to_int(v, default=2, min_val=1, max_val=5),
+    }
+    for field in allowed & set(request.data.keys()):
+        val = request.data[field]
+        setattr(node, field, COERCE_INT[field](val) if field in COERCE_INT else val)
+    node.save()
+    return Response(RoadmapNodeSerializer(node).data)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def add_roadmap_node(request, roadmap_pk):
+    """
+    POST /api/roadmaps/{id}/nodes/add/
+    Insert a new node into the roadmap. New nodes are locked by default.
+    Optionally set parent_node to after_node_id for ordering context.
+    """
+    roadmap = get_object_or_404(Roadmap, pk=roadmap_pk, user=request.user)
+    last_order = roadmap.nodes.aggregate(m=models.Max('node_order'))['m'] or 0
+    node = RoadmapNode.objects.create(
+        roadmap=roadmap,
+        title=request.data.get('title', 'New Node'),
+        description=request.data.get('description', ''),
+        node_type=_coerce_node_type(request.data.get('node_type')),
+        estimated_hours=_to_int(request.data.get('estimated_hours'), default=5, min_val=1),
+        difficulty=_to_int(request.data.get('difficulty'), default=2, min_val=1, max_val=5),
+        status=RoadmapNode.Status.LOCKED,
+        node_order=last_order + 1,
+    )
+    after_id = request.data.get('after_node_id')
+    if after_id:
+        try:
+            anchor = roadmap.nodes.get(pk=after_id)
+            node.parent_node = anchor
+            node.save(update_fields=['parent_node'])
+        except RoadmapNode.DoesNotExist:
+            pass
+    roadmap.recalculate_completion()
+    return Response(RoadmapNodeSerializer(node).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['DELETE'])
+@permission_classes([permissions.IsAuthenticated])
+def remove_roadmap_node(request, roadmap_pk, node_pk):
+    """
+    DELETE /api/roadmaps/{id}/nodes/{nid}/remove/
+    Remove a node from the roadmap and recalculate completion %.
+    """
+    node = get_object_or_404(
+        RoadmapNode, pk=node_pk, roadmap__pk=roadmap_pk, roadmap__user=request.user
+    )
+    if node.node_type == 'milestone':
+        return Response({'detail': 'Cannot remove phase milestone nodes.'}, status=status.HTTP_400_BAD_REQUEST)
+    if node.status == 'completed':
+        return Response({'detail': 'Cannot remove a completed node.'}, status=status.HTTP_400_BAD_REQUEST)
+    node.delete()
+    roadmap = Roadmap.objects.get(pk=roadmap_pk)
+    roadmap.recalculate_completion()
+    return Response(status=status.HTTP_204_NO_CONTENT)

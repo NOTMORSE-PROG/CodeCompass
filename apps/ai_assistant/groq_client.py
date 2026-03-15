@@ -2,8 +2,19 @@
 Groq API client for CodeCompass AI assistant.
 API key is read from Django settings (which reads from .env) — never hardcoded.
 """
+import logging
+import re
 from django.conf import settings
 from groq import Groq
+
+logger = logging.getLogger('ai_assistant.groq_client')
+
+
+def _strip_code_fence(raw: str) -> str:
+    """Strip markdown code fences (```json ... ```) from a model response, case-insensitively."""
+    raw = re.sub(r'^```[a-zA-Z]*\s*', '', raw.strip())
+    raw = re.sub(r'\s*```$', '', raw).strip()
+    return raw
 
 # Initialize client once at module level (reused across requests)
 _client = None
@@ -260,6 +271,35 @@ Guidelines:
 - Be honest about difficulty — don't sugarcoat hard topics, but keep encouragement high
 - Keep responses focused and actionable — 3-5 sentences or a short bulleted list
 - Use markdown: **bold** key terms, bullet lists, inline `code` for syntax
+
+ROADMAP EDITING — TWO-STEP RULE (follow strictly):
+
+STEP 1 — GATHER (no tag yet):
+If the student says they want to change something but has NOT yet provided the specific new value,
+ask ONE focused clarifying question to get the exact change they want.
+Do NOT append a [ROADMAP_EDIT] tag in this message. Do NOT guess or propose values yet.
+Example triggers that require clarification first: "I want to change something", "can you update that node",
+"this doesn't feel right" → ask what specifically they want the new title/description/etc. to be.
+
+STEP 2 — PROPOSE (append tag(s) only when you have the exact new values):
+Once the student provides the specific change(s), respond with your normal text AND append
+ONE OR MORE [ROADMAP_EDIT: {...}] tags at the very end — one per action, in the order they should be applied.
+Example: rename a node AND add a new one → append two tags back-to-back.
+
+Tag format (one per action):
+[ROADMAP_EDIT: {"action": "edit_node", "roadmap_id": <id>, "node_id": <id>, "changes": {"title": "...", "description": "..."}, "summary": "Short description of the change"}]
+
+Actions:
+- "edit_node"    → change title/description/estimated_hours/difficulty of an existing node (requires node_id)
+- "edit_roadmap" → change roadmap title/description/estimated_weeks (omit node_id)
+- "add_node"     → add a new node (omit node_id; put title/description/node_type/estimated_hours/difficulty in changes; include after_node_id in changes)
+                   VALID node_type values ONLY: "skill" (learning topic), "assessment" (self-check), "project" (hands-on build), "certification" (credential goal)
+                   Always set after_node_id to the ID of the last node in the target phase (from "All nodes") — this ensures the node lands in the right phase, not appended to the end of the roadmap
+                   difficulty must be an integer 1–5
+- "remove_node"  → delete a node (requires node_id; no changes key needed)
+
+Use the node IDs from the "All nodes" list in your context. If you are unsure of a node ID, ask the student to clarify.
+NEVER append any tag in the same message where you are still asking for missing information.
 """
 
 _SYSTEM_PROMPT_JOB = """
@@ -363,6 +403,16 @@ def _build_context_block(user_context: dict) -> str:
     if current_node:
         lines.append(f"Currently on: {current_node}")
 
+    full_node_list = user_context.get('full_node_list', [])
+    if full_node_list:
+        roadmap_id = user_context.get('roadmap_id', '')
+        lines.append(f'Roadmap ID: {roadmap_id}')
+        node_lines = [
+            f"  [{n['id']}] {n['title']} ({n['status']})"
+            for n in full_node_list
+        ]
+        lines.append('All nodes (id / title / status):\n' + '\n'.join(node_lines))
+
     lines.append('━━━━━━━━━━━━━━━━━━━━━━')
     lines.append(
         'Use this context to give PERSONALIZED responses. Reference their specific program, '
@@ -380,16 +430,40 @@ _MODE_PROMPTS = {
 }
 
 
-def build_career_mentor_prompt(user_context: dict = None, mode: str = 'general') -> str:
+_LANGUAGE_OVERRIDES = {
+    'english': (
+        'LANGUAGE OVERRIDE: You MUST respond in English only. '
+        'Do not use Filipino, Tagalog, or Taglish in any part of your response.'
+    ),
+    'tagalog': (
+        'LANGUAGE OVERRIDE: You MUST respond in natural Filipino/Tagalog only. '
+        'Use English only for technical terms that have no Filipino equivalent '
+        '(e.g., function, variable, API). All explanations, encouragement, and '
+        'conversation must be in Filipino.'
+    ),
+    'taglish': (
+        'LANGUAGE OVERRIDE: You MUST respond in Taglish — a natural mix of casual '
+        'Filipino phrases and English technical terms, as Filipino developers commonly speak. '
+        'Do not respond in pure English or pure Filipino.'
+    ),
+}
+
+
+def build_career_mentor_prompt(user_context: dict = None, mode: str = 'general', language: str = 'english') -> str:
     """
     Return a personalized system prompt for the AI career mentor.
-    Selects the base prompt by mode, then prepends a student context block if available.
+    Selects the base prompt by mode, prepends student context, then applies language override.
+    The language override is placed first so the model treats it as highest-priority.
     """
     base = _MODE_PROMPTS.get(mode, SYSTEM_PROMPT_CAREER_MENTOR)
     context_block = _build_context_block(user_context or {})
-    if context_block:
-        return context_block + '\n\n' + base.strip()
-    return base.strip()
+    prompt = (context_block + '\n\n' + base.strip()) if context_block else base.strip()
+
+    lang_line = _LANGUAGE_OVERRIDES.get((language or 'english').lower(), '')
+    if lang_line:
+        prompt = lang_line + '\n\n' + prompt
+
+    return prompt
 
 ROADMAP_GENERATION_PROMPT = """
 You are a curriculum designer for Filipino CCS (College of Computer Studies) students.
@@ -414,10 +488,13 @@ CRITICAL RULES — follow these exactly:
    - experienced: focus on advanced skills and portfolio-level projects
 
 3. REQUIRED PHASE STRUCTURE (use milestone nodes as phase headers):
-   Phase 1 — Foundations   (1 milestone + 2-3 core skills)
-   Phase 2 — Core Skills   (1 milestone + 3-4 path-specific skills)
-   Phase 3 — Build         (1 milestone + 1-2 real projects)
-   Phase 4 — Credentials   (1 milestone + 1-2 certifications relevant to the path)
+   Phase 1 — Foundations   (1 milestone + 2-3 nodes, node_type: "skill" ONLY)
+   Phase 2 — Core Skills   (1 milestone + 3-4 nodes, node_type: "skill" ONLY)
+   Phase 3 — Build         (1 milestone + 1-3 nodes, node_type: "project" ONLY — NO certifications here)
+   Phase 4 — Credentials   (1 milestone + 1-2 nodes, node_type: "certification" ONLY — NO projects here)
+
+   STRICT TYPE RULE: Phase 3 must contain ONLY "project" nodes. Phase 4 must contain ONLY "certification" nodes.
+   NEVER mix projects and certifications in the same phase. Every node's node_type must match its phase.
 
 4. CERTIFICATIONS ONLY IN PHASE 4 — TIERED BY STUDENT LEVEL
    Never put certifications before the student has learned the skills.
@@ -1074,12 +1151,12 @@ def generate_video_assessment(
         max_tokens=1900,
     )
 
-    raw = response.choices[0].message.content.strip()
-    if raw.startswith('```'):
-        raw = raw.split('```')[1]
-        if raw.startswith('json'):
-            raw = raw[4:]
-    return json.loads(raw)
+    raw = _strip_code_fence(response.choices[0].message.content)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        logger.error('[Groq] generate_video_assessment: invalid JSON. Raw: %.300s', raw)
+        return []
 
 
 def generate_roadmap(quiz_summary: dict) -> dict:
@@ -1102,13 +1179,12 @@ def generate_roadmap(quiz_summary: dict) -> dict:
         max_tokens=4096,
     )
 
-    raw = response.choices[0].message.content.strip()
-    # Strip markdown code fences if model wraps the JSON
-    if raw.startswith('```'):
-        raw = raw.split('```')[1]
-        if raw.startswith('json'):
-            raw = raw[4:]
-    return json.loads(raw)
+    raw = _strip_code_fence(response.choices[0].message.content)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        logger.error('[Groq] generate_roadmap: invalid JSON. Raw: %.300s', raw)
+        raise ValueError('AI returned invalid JSON for roadmap generation.')
 
 
 _PROFILE_EXTRACTION_PROMPT = """
@@ -1165,11 +1241,7 @@ def extract_profile_from_chat(messages: list, role: str) -> dict:
         max_tokens=700,
     )
 
-    raw = response.choices[0].message.content.strip()
-    if raw.startswith('```'):
-        raw = raw.split('```')[1]
-        if raw.startswith('json'):
-            raw = raw[4:]
+    raw = _strip_code_fence(response.choices[0].message.content)
     try:
         return json.loads(raw)
     except json.JSONDecodeError:

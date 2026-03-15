@@ -31,12 +31,13 @@ class Roadmap(models.Model):
         return f'{self.title} ({self.user.email})'
 
     def recalculate_completion(self):
-        """Recalculate and save completion percentage based on completed nodes."""
-        total = self.nodes.count()
+        """Recalculate and save completion percentage.
+        Milestone nodes are excluded — they are auto-completed phase markers, not real tasks."""
+        total = self.nodes.exclude(node_type='milestone').count()
         if total == 0:
             self.completion_percentage = 0
         else:
-            completed = self.nodes.filter(status='completed').count()
+            completed = self.nodes.filter(status='completed').exclude(node_type='milestone').count()
             self.completion_percentage = round((completed / total) * 100, 2)
         self.save(update_fields=['completion_percentage'])
 

@@ -38,17 +38,23 @@ class UserCertificationDetailView(generics.RetrieveUpdateDestroyAPIView):
         return UserCertification.objects.filter(user=self.request.user)
 
     def perform_update(self, serializer):
-        old_status = self.get_object().status
+        old_status = serializer.instance.status  # Use already-loaded instance, not extra DB query
         instance = serializer.save()
         # Award XP when user marks a cert as passed for the first time
         if instance.status == 'passed' and old_status != 'passed':
             try:
                 from apps.gamification.engine import award_xp
-                award_xp(
-                    self.request.user,
-                    'cert_earned',
+                from apps.gamification.models import XPEvent as _XPEvent
+                if not _XPEvent.objects.filter(
+                    user=self.request.user,
+                    event_type='cert_earned',
                     reference_id=instance.certification_id,
-                    description=f'Earned certification: {instance.certification.name}',
-                )
+                ).exists():
+                    award_xp(
+                        self.request.user,
+                        'cert_earned',
+                        reference_id=instance.certification_id,
+                        description=f'Earned certification: {instance.certification.name}',
+                    )
             except Exception:
                 pass  # Never block the update if XP fails

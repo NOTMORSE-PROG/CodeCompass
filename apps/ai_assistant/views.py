@@ -1,4 +1,5 @@
 """REST endpoints for chat session management (history, list, create)."""
+from django.db.models import Count
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 
@@ -19,9 +20,24 @@ class ChatSessionListCreateView(generics.ListCreateAPIView):
         return ChatSessionListSerializer
 
     def get_queryset(self):
-        return ChatSession.objects.filter(user=self.request.user, is_active=True)
+        return (
+            ChatSession.objects
+            .filter(user=self.request.user, is_active=True)
+            .exclude(context_type='onboarding')
+            .annotate(message_count=Count('messages'))
+            .filter(message_count__gt=0)
+            .order_by('-updated_at')
+        )
 
     def perform_create(self, serializer):
+        # Starting a new onboarding session — hard-delete all previous ones so
+        # incomplete onboarding chats never accumulate in the database.
+        context_type = serializer.validated_data.get('context_type', 'general')
+        if context_type == 'onboarding':
+            ChatSession.objects.filter(
+                user=self.request.user,
+                context_type='onboarding',
+            ).delete()
         serializer.save(user=self.request.user)
 
 

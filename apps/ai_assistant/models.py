@@ -7,7 +7,6 @@ class ChatSession(models.Model):
     class ContextType(models.TextChoices):
         GENERAL = 'general', 'General Career Advice'
         ROADMAP = 'roadmap', 'Roadmap Discussion'
-        MENTOR = 'mentor', 'Mentor Recommendation'
         JOB = 'job', 'Job Search'
         UNIVERSITY = 'university', 'University Selection'
         ONBOARDING = 'onboarding', 'Onboarding Interview'

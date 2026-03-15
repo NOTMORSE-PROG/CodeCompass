@@ -23,6 +23,8 @@ class RoleTokenObtainPairSerializer(TokenObtainPairSerializer):
         token['email'] = user.email
         token['full_name'] = user.get_full_name()
         token['is_onboarded'] = user.is_onboarded
+        token['has_password'] = user.has_usable_password()
+        token['google_connected'] = bool(user.google_id)
         return token
 
 
@@ -47,6 +49,12 @@ class RegisterSerializer(serializers.ModelSerializer):
             'last_name': {'required': True},
         }
 
+    def validate_email(self, value):
+        normalized = value.lower().strip()
+        if CustomUser.objects.filter(email=normalized).exists():
+            raise serializers.ValidationError('A user with this email already exists.')
+        return normalized
+
     def validate(self, attrs):
         if attrs['password'] != attrs['password_confirm']:
             raise serializers.ValidationError({'password_confirm': 'Passwords do not match.'})
@@ -68,13 +76,23 @@ class RegisterSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     """Read-only summary of the current user."""
 
+    has_password = serializers.SerializerMethodField()
+    google_connected = serializers.SerializerMethodField()
+
+    def get_has_password(self, obj):
+        return obj.has_usable_password()
+
+    def get_google_connected(self, obj):
+        return bool(obj.google_id)
+
     class Meta:
         model = CustomUser
         fields = [
             'id', 'email', 'username', 'first_name', 'last_name',
             'role', 'is_onboarded', 'avatar', 'created_at',
+            'has_password', 'google_connected',
         ]
-        read_only_fields = ['id', 'email', 'role', 'created_at']
+        read_only_fields = ['id', 'email', 'role', 'created_at', 'has_password', 'google_connected']
 
 
 class StudentProfileSerializer(serializers.ModelSerializer):

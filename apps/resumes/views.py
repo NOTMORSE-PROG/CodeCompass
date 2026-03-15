@@ -1,13 +1,15 @@
 """
 Resume CRUD and AI-powered generation endpoints.
 """
+import logging
 from rest_framework import generics, status, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-
 from .models import Resume
 from .serializers import ResumeSerializer, ResumeListSerializer
 from . import groq_client
+
+logger = logging.getLogger('resumes.views')
 
 
 class ResumeListCreateView(generics.ListCreateAPIView):
@@ -71,9 +73,10 @@ def generate_bullets(request, pk):
     try:
         bullets = groq_client.generate_bullet_points(job_title, achievement)
         return Response({'bullets': bullets})
-    except Exception as e:
+    except Exception:
+        logger.exception('generate_bullets failed for user %s', request.user.pk)
         return Response(
-            {'detail': f'AI generation failed: {str(e)}'},
+            {'detail': 'AI service temporarily unavailable. Please try again.'},
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
@@ -104,9 +107,10 @@ def generate_summary(request, pk):
     try:
         summaries = groq_client.generate_summary(target_role, strengths, years_exp)
         return Response({'summaries': summaries})
-    except Exception as e:
+    except Exception:
+        logger.exception('generate_summary failed for user %s', request.user.pk)
         return Response(
-            {'detail': f'AI generation failed: {str(e)}'},
+            {'detail': 'AI service temporarily unavailable. Please try again.'},
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
@@ -129,9 +133,10 @@ def parse_job_description(request):
     try:
         result = groq_client.parse_job_description(job_description)
         return Response(result)
-    except Exception as e:
+    except Exception:
+        logger.exception('parse_job_description failed for user %s', request.user.pk)
         return Response(
-            {'detail': f'AI parsing failed: {str(e)}'},
+            {'detail': 'AI service temporarily unavailable. Please try again.'},
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 

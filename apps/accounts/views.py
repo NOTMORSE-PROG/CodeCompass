@@ -42,6 +42,8 @@ def _issue_tokens(user):
     refresh['email'] = user.email
     refresh['full_name'] = user.get_full_name()
     refresh['is_onboarded'] = user.is_onboarded
+    refresh['has_password'] = user.has_usable_password()
+    refresh['google_connected'] = bool(user.google_id)
     return str(refresh.access_token), str(refresh)
 
 
@@ -57,9 +59,22 @@ class LoginView(TokenObtainPairView):
     """
     POST /api/auth/login/
     Returns access + refresh JWT tokens with role, email embedded in payload.
+    Also updates the daily login streak.
     """
     serializer_class = RoleTokenObtainPairSerializer
     throttle_classes = [LoginRateThrottle]
+
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            from apps.gamification.engine import update_streak
+            email = request.data.get('email', '').lower().strip()
+            try:
+                user = CustomUser.objects.get(email=email)
+                update_streak(user)
+            except CustomUser.DoesNotExist:
+                pass
+        return response
 
 
 class RegisterView(generics.CreateAPIView):
@@ -119,20 +134,46 @@ class MeView(generics.RetrieveUpdateAPIView):
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
 def change_password_view(request):
-    """POST /api/auth/change-password/"""
+    """
+    POST /api/auth/change-password/
+    Changes the user's password. Accepts an optional 'refresh' token in the body;
+    if provided, the old refresh token is blacklisted and a fresh token pair is returned,
+    ensuring the session reflects the new password immediately.
+    """
+    user = request.user
+    if not user.has_usable_password():
+        return Response(
+            {'detail': 'Password change is not available for Google accounts.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     serializer = ChangePasswordSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
-    user = request.user
     if not user.check_password(serializer.validated_data['old_password']):
         return Response(
-            {'old_password': 'Incorrect current password.'},
+            {'old_password': ['Incorrect current password.']},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     user.set_password(serializer.validated_data['new_password'])
     user.save()
-    return Response({'detail': 'Password changed successfully.'})
+
+    # Blacklist the old refresh token and issue a fresh pair so the client
+    # session is immediately up-to-date without requiring a re-login.
+    old_refresh_token = request.data.get('refresh')
+    if old_refresh_token:
+        try:
+            RefreshToken(old_refresh_token).blacklist()
+        except Exception:
+            pass  # Expired / already blacklisted — not a blocker
+
+    access, refresh = _issue_tokens(user)
+    return Response({
+        'detail': 'Password changed successfully.',
+        'access': access,
+        'refresh': refresh,
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -197,13 +238,14 @@ class GoogleOAuthView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        email = idinfo.get('email')
+        email = idinfo.get('email', '').lower().strip()
         if not email:
             return Response(
                 {'detail': 'Email not provided by Google.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        google_sub = idinfo.get('sub', '').strip()
         user, created = CustomUser.objects.get_or_create(
             email=email,
             defaults={
@@ -217,14 +259,101 @@ class GoogleOAuthView(APIView):
             },
         )
 
-        # Ensure StudentProfile exists for new Google users
+        user_changed = False
+
+        # Mark new Google users as having no password and store their Google sub
         if created:
+            user.set_unusable_password()
+            user_changed = True
             StudentProfile.objects.get_or_create(user=user, defaults={'year_level': '1st'})
 
+        # Store google_id for all Google logins (enables "Google Connected" tracking)
+        if not user.google_id and google_sub:
+            user.google_id = google_sub
+            user_changed = True
+
+        if user_changed:
+            user.save()
+
         access, refresh = _issue_tokens(user)
+        from apps.gamification.engine import update_streak
+        try:
+            update_streak(user)
+        except Exception:
+            pass  # Never block login if streak update fails
         return Response({
             'user': UserSerializer(user).data,
             'access': access,
             'refresh': refresh,
             'is_new_user': created,
         })
+
+
+class ConnectGoogleView(APIView):
+    """
+    POST /api/auth/connect-google/
+    Allows an email-registered user to link their Google account.
+    Verifies the Google credential, ensures the email matches, then stores the Google sub.
+    Re-issues JWT tokens so the frontend gets updated google_connected=True claims.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        credential = request.data.get('credential')
+        if not credential:
+            return Response(
+                {'detail': 'Google credential is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not settings.GOOGLE_CLIENT_ID:
+            return Response(
+                {'detail': 'Google OAuth is not configured on this server.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        try:
+            idinfo = id_token.verify_oauth2_token(
+                credential,
+                google_requests.Request(),
+                settings.GOOGLE_CLIENT_ID,
+            )
+        except ValueError:
+            return Response(
+                {'detail': 'Invalid or expired Google token.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except Exception:
+            return Response(
+                {'detail': 'Google authentication failed. Please try again.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        # Bug fix #1: validate google_sub is non-empty before saving
+        google_sub = idinfo.get('sub', '').strip()
+        if not google_sub:
+            return Response(
+                {'detail': 'Google token is missing required subject claim.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = request.user
+        google_email = idinfo.get('email', '').lower().strip()
+
+        if google_email != user.email.lower():
+            return Response(
+                {'detail': 'The Google account email does not match your account email.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if user.google_id:
+            return Response(
+                {'detail': 'A Google account is already connected.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.google_id = google_sub
+        user.save(update_fields=['google_id'])  # Bug fix #6: targeted save
+
+        access, refresh = _issue_tokens(user)
+        return Response({'access': access, 'refresh': refresh})

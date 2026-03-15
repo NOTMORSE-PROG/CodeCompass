@@ -15,6 +15,7 @@ Onboarding sessions (context_type='onboarding'):
 - Use ONBOARDING_SYSTEM_PROMPT instead of the career mentor prompt
 - Automatically stream a greeting message on connect (no user trigger needed)
 """
+import asyncio
 import json
 import logging
 import re
@@ -36,6 +37,66 @@ def _extract_suggestions(text: str):
     suggestions = [s.strip() for s in match.group(1).split('|') if s.strip()]
     clean = re.sub(r'\s*\[SUGGESTIONS:.*?\]', '', text, flags=re.IGNORECASE).strip()
     return clean, suggestions
+
+
+def _extract_edit_proposals(text: str):
+    """
+    Parse all [ROADMAP_EDIT: {...}] tags from an AI response.
+    Returns (clean_text, list_of_valid_proposals).
+    Invalid/incomplete proposals are stripped from the text but excluded from the list.
+    """
+    matches = re.findall(r'\[ROADMAP_EDIT:\s*(\{.*?\})\s*\]', text, re.IGNORECASE | re.DOTALL)
+    # Always strip all tags from text
+    clean = re.sub(r'\s*\[ROADMAP_EDIT:.*?\]', '', text, flags=re.IGNORECASE | re.DOTALL).strip()
+    valid = []
+    for raw in matches:
+        try:
+            proposal = json.loads(raw)
+        except (json.JSONDecodeError, ValueError):
+            continue
+        if _is_valid_proposal(proposal):
+            valid.append(proposal)
+    return clean, valid
+
+
+_ALLOWED_ACTIONS = {'edit_node', 'edit_roadmap', 'add_node', 'remove_node'}
+
+
+def _is_valid_proposal(proposal: dict) -> bool:
+    """
+    Returns True only if the proposal has all required fields with real values.
+    Catches AI-generated placeholders: '?', null, empty strings, '<id>' templates.
+    """
+    def _is_placeholder(val):
+        if val is None:
+            return True
+        s = str(val).strip()
+        return s in ('', '?', 'null', 'undefined') or s.startswith('<')
+
+    action = proposal.get('action', '')
+    if action not in _ALLOWED_ACTIONS:
+        return False
+
+    rid = proposal.get('roadmap_id')
+    if _is_placeholder(rid) or not str(rid).lstrip('-').isdigit() or int(str(rid)) <= 0:
+        return False
+
+    if action in ('edit_node', 'remove_node'):
+        nid = proposal.get('node_id')
+        if _is_placeholder(nid) or not str(nid).lstrip('-').isdigit() or int(str(nid)) <= 0:
+            return False
+
+    if action in ('edit_node', 'edit_roadmap', 'add_node'):
+        changes = proposal.get('changes')
+        if not isinstance(changes, dict) or not changes:
+            return False
+        if any(_is_placeholder(v) for v in changes.values()):
+            return False
+
+    if _is_placeholder(proposal.get('summary', '')):
+        return False
+
+    return True
 
 
 class ChatConsumer(AsyncWebsocketConsumer):
@@ -85,12 +146,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
         # Load personalized user context for system prompt injection.
         self.user_context = await self.load_user_context()
 
-        # For onboarding sessions, immediately stream an AI greeting
+        # For onboarding sessions, stream the AI greeting only on the FIRST connect.
+        # If the user refreshes/reconnects, the session already has messages — skip the greeting
+        # to avoid a duplicate "Hello!" being saved and streamed again.
         if self.chat_session.context_type == 'onboarding':
-            await self._send_greeting()
+            if not await self._session_has_messages():
+                await self._send_greeting()
 
     async def disconnect(self, close_code):
-        pass
+        logger.debug('[WS] Client disconnected: session=%s code=%s', getattr(self, 'session_id', '?'), close_code)
 
     async def receive(self, text_data):
         """Handle incoming message from the client."""
@@ -102,6 +166,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         user_message_text = data.get('message', '').strip()
         if not user_message_text:
             return
+        language = data.get('language', 'english')
 
         # Save user message
         await self.save_message('user', user_message_text)
@@ -117,8 +182,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'type': 'session_title_updated',
                     'title': title,
                 }))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug('[WS] Could not send title update (client likely disconnected): %s', e)
 
         # Build message history for context (last 20 messages)
         history = await self.get_message_history()
@@ -131,48 +196,64 @@ class ChatConsumer(AsyncWebsocketConsumer):
             system_prompt = build_career_mentor_prompt(
                 user_context=self.user_context,
                 mode=self.chat_session.context_type,
+                language=language,
             )
 
-        # Stream AI response
+        # Stream AI response (60 s hard timeout — prevents indefinite hang if Groq stalls)
         full_response = ''
         stream_failed = False
         try:
-            for chunk in stream_chat(history, self.user.role, system_prompt=system_prompt):
-                full_response += chunk
-                await self.send(text_data=json.dumps({
-                    'type': 'stream_chunk',
-                    'content': chunk,
-                }))
-        except Exception as e:
+            async with asyncio.timeout(60):
+                for chunk in stream_chat(history, self.user.role, system_prompt=system_prompt):
+                    full_response += chunk
+                    await self.send(text_data=json.dumps({
+                        'type': 'stream_chunk',
+                        'content': chunk,
+                    }))
+        except TimeoutError:
             stream_failed = True
+            logger.warning('[WS] Groq stream timed out for session %s', getattr(self, 'session_id', '?'))
             try:
                 await self.send(text_data=json.dumps({
                     'type': 'stream_error',
-                    'error': str(e),
+                    'error': 'Response timed out. Please try again.',
                 }))
-            except Exception:
-                pass  # Client already disconnected — ignore
+            except Exception as send_err:
+                logger.debug('[WS] Could not send timeout error (client disconnected): %s', send_err)
+            return
+        except Exception:
+            stream_failed = True
+            logger.exception('[WS] Groq stream error for session %s', getattr(self, 'session_id', '?'))
+            try:
+                await self.send(text_data=json.dumps({
+                    'type': 'stream_error',
+                    'error': 'AI service temporarily unavailable. Please try again.',
+                }))
+            except Exception as send_err:
+                logger.debug('[WS] Could not send stream_error (client disconnected): %s', send_err)
             return
 
         if stream_failed or not full_response:
             return
 
-        # Strip suggestions tag from saved content
+        # Strip suggestions and edit proposal tags from saved content
         clean_response, suggestions = _extract_suggestions(full_response)
+        clean_response, edit_proposals = _extract_edit_proposals(clean_response)
 
         try:
             # Save clean assistant message
             assistant_msg = await self.save_message('assistant', clean_response)
 
-            # Signal stream complete with suggestions and clean content
+            # Signal stream complete with suggestions, clean content, and optional edit proposals
             await self.send(text_data=json.dumps({
                 'type': 'stream_end',
                 'message_id': assistant_msg.id,
                 'clean_content': clean_response,
                 'suggestions': suggestions,
+                'edit_proposals': edit_proposals if edit_proposals else None,
             }))
-        except Exception:
-            pass  # Client disconnected before stream_end could be sent
+        except Exception as e:
+            logger.exception('[WS] Failed to save/send stream_end for session %s: %s', getattr(self, 'session_id', '?'), e)
 
     async def _send_greeting(self):
         """Stream the AI's opening onboarding question to the client."""
@@ -181,20 +262,32 @@ class ChatConsumer(AsyncWebsocketConsumer):
         trigger = [{'role': 'user', 'content': '__start__'}]
         full_response = ''
         try:
-            for chunk in stream_chat(trigger, self.user.role, system_prompt=get_onboarding_system_prompt(self.user.role)):
-                full_response += chunk
-                await self.send(text_data=json.dumps({
-                    'type': 'stream_chunk',
-                    'content': chunk,
-                }))
-        except Exception as e:
+            async with asyncio.timeout(60):
+                for chunk in stream_chat(trigger, self.user.role, system_prompt=get_onboarding_system_prompt(self.user.role)):
+                    full_response += chunk
+                    await self.send(text_data=json.dumps({
+                        'type': 'stream_chunk',
+                        'content': chunk,
+                    }))
+        except TimeoutError:
+            logger.warning('[WS] Greeting stream timed out for session %s', getattr(self, 'session_id', '?'))
             try:
                 await self.send(text_data=json.dumps({
                     'type': 'stream_error',
-                    'error': str(e),
+                    'error': 'AI service temporarily unavailable. Please try again.',
                 }))
-            except Exception:
-                pass  # Client already disconnected — ignore
+            except Exception as send_err:
+                logger.debug('[WS] Could not send greeting timeout error (client disconnected): %s', send_err)
+            return
+        except Exception:
+            logger.exception('[WS] Greeting stream error for session %s', getattr(self, 'session_id', '?'))
+            try:
+                await self.send(text_data=json.dumps({
+                    'type': 'stream_error',
+                    'error': 'AI service temporarily unavailable. Please try again.',
+                }))
+            except Exception as send_err:
+                logger.debug('[WS] Could not send greeting error (client disconnected): %s', send_err)
             return
 
         if not full_response:
@@ -202,15 +295,15 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         clean_response, suggestions = _extract_suggestions(full_response)
         try:
-            await self.save_message('assistant', clean_response)
+            greeting_msg = await self.save_message('assistant', clean_response)
             await self.send(text_data=json.dumps({
                 'type': 'stream_end',
-                'message_id': None,
+                'message_id': greeting_msg.id,
                 'clean_content': clean_response,
                 'suggestions': suggestions,
             }))
-        except Exception:
-            pass  # Client disconnected before greeting completed
+        except Exception as e:
+            logger.exception('[WS] Failed to save/send greeting stream_end for session %s: %s', getattr(self, 'session_id', '?'), e)
 
     # -------------------------------------------------------------------------
     # Database helpers (sync-to-async wrappers)
@@ -254,8 +347,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'target_career': sp.target_career or '',
                 'current_skills': sp.current_skills or [],
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug('[WS] load_user_context: student_profile unavailable for user %s: %s', self.user.pk, e)
         # Onboarding summary
         try:
             summary = self.user.onboarding_session.onboarding_summary or {}
@@ -266,8 +359,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'learning_style': summary.get('learning_style', ''),
                 'recommended_path': summary.get('recommended_path', ''),
             })
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug('[WS] load_user_context: onboarding_summary unavailable for user %s: %s', self.user.pk, e)
         # Primary roadmap progress
         try:
             from apps.roadmaps.models import Roadmap
@@ -276,7 +369,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 or Roadmap.objects.filter(user=self.user).order_by('-created_at').first()
             )
             if roadmap:
-                nodes = list(roadmap.nodes.order_by('position_y').values('title', 'status'))
+                nodes = list(roadmap.nodes.order_by('position_y').values('id', 'title', 'status'))
+                ctx['roadmap_id'] = roadmap.id
                 ctx['roadmap_title'] = roadmap.title
                 ctx['roadmap_path'] = roadmap.career_path
                 ctx['roadmap_pct'] = roadmap.completion_percentage
@@ -284,8 +378,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 ctx['current_node'] = next(
                     (n['title'] for n in nodes if n['status'] == 'in_progress'), None
                 )
-        except Exception:
-            pass
+                ctx['full_node_list'] = [
+                    {'id': n['id'], 'title': n['title'], 'status': n['status']}
+                    for n in nodes
+                ]
+        except Exception as e:
+            logger.debug('[WS] load_user_context: roadmap unavailable for user %s: %s', self.user.pk, e)
         return ctx
 
     @database_sync_to_async
@@ -302,6 +400,12 @@ class ChatConsumer(AsyncWebsocketConsumer):
             content=content,
             model_used='llama-3.3-70b-versatile' if role == 'assistant' else '',
         )
+
+    @database_sync_to_async
+    def _session_has_messages(self) -> bool:
+        """Return True if this session already has at least one saved message."""
+        from .models import ChatMessage
+        return ChatMessage.objects.filter(session=self.chat_session).exists()
 
     @database_sync_to_async
     def get_message_history(self) -> list:

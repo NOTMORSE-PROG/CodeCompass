@@ -2,6 +2,8 @@
 XP and badge award engine.
 Called from signals and views when XP-earning events occur.
 """
+from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 
 # XP amounts per event type
@@ -27,28 +29,43 @@ BADGE_TRIGGERS = {
 }
 
 
-def award_xp(user, event_type: str, reference_id=None, description: str = '', xp_override: int = None):
+def award_xp(user, event_type: str, reference_id=None, description: str = '', xp_override: int = None, unique_per_user: bool = False):
     """
     Award XP to a user for a specific event.
     Updates StudentProfile.xp_total and creates an XPEvent record.
+
+    unique_per_user=True: use get_or_create so the event is only recorded once
+    per user regardless of concurrent requests (e.g. roadmap_generated,
+    onboarding_completed). Returns early without updating XP if already exists.
     """
     from .models import XPEvent
 
     xp = xp_override if xp_override is not None else XP_AMOUNTS.get(event_type, 10)
 
-    XPEvent.objects.create(
-        user=user,
-        event_type=event_type,
-        xp_earned=xp,
-        description=description or event_type.replace('_', ' ').title(),
-        reference_id=reference_id,
-    )
+    if unique_per_user:
+        _, created = XPEvent.objects.get_or_create(
+            user=user,
+            event_type=event_type,
+            defaults={
+                'xp_earned': xp,
+                'description': description or event_type.replace('_', ' ').title(),
+                'reference_id': reference_id,
+            }
+        )
+        if not created:
+            return  # Already awarded — skip XP update and badge check
+    else:
+        XPEvent.objects.create(
+            user=user,
+            event_type=event_type,
+            xp_earned=xp,
+            description=description or event_type.replace('_', ' ').title(),
+            reference_id=reference_id,
+        )
 
-    # Update total XP on StudentProfile
-    if hasattr(user, 'student_profile'):
-        profile = user.student_profile
-        profile.xp_total += xp
-        profile.save(update_fields=['xp_total'])
+    # Update total XP atomically to prevent race conditions
+    from apps.accounts.models import StudentProfile
+    StudentProfile.objects.filter(user=user).update(xp_total=F('xp_total') + xp)
 
     # Check and award badges after XP event
     _check_badges(user, event_type, reference_id)
@@ -58,24 +75,27 @@ def update_streak(user):
     """
     Update the student's daily streak.
     Call this on daily login. Returns current streak count.
+    Uses select_for_update to prevent race conditions on concurrent logins.
     """
     if not hasattr(user, 'student_profile'):
         return 0
 
-    profile = user.student_profile
     today = timezone.now().date()
 
-    if profile.last_active_date is None:
-        profile.streak_count = 1
-    elif profile.last_active_date == today:
-        return profile.streak_count  # Already logged in today
-    elif (today - profile.last_active_date).days == 1:
-        profile.streak_count += 1  # Consecutive day
-    else:
-        profile.streak_count = 1  # Streak broken
+    with transaction.atomic():
+        from apps.accounts.models import StudentProfile
+        profile = StudentProfile.objects.select_for_update().get(user=user)
 
-    profile.last_active_date = today
-    profile.save(update_fields=['streak_count', 'last_active_date'])
+        if profile.last_active_date == today:
+            return profile.streak_count  # Already updated today
+
+        if profile.last_active_date is None or (today - profile.last_active_date).days > 1:
+            profile.streak_count = 1     # First login or streak broken
+        else:
+            profile.streak_count += 1   # Consecutive day
+
+        profile.last_active_date = today
+        profile.save(update_fields=['streak_count', 'last_active_date'])
 
     award_xp(user, 'daily_login', description='Daily login streak!')
     _check_badges(user, 'streak_days', None)
@@ -105,17 +125,16 @@ def _check_badges(user, event_type: str, reference_id):
             should_award = streak >= badge.trigger_value
 
         elif event_type == 'mentor_requests':
-            from apps.mentorship.models import MentorshipRequest
-            count = MentorshipRequest.objects.filter(student=user).count()
-            should_award = count >= badge.trigger_value
+            # Mentorship app removed — this trigger type is retired
+            should_award = False
 
         else:
             # Simple: this event type occurring once is enough
             should_award = True
 
         if should_award:
-            UserBadge.objects.create(user=user, badge=badge)
-            # Award bonus XP for earning the badge
-            if badge.xp_bonus:
+            _, badge_created = UserBadge.objects.get_or_create(user=user, badge=badge)
+            # Award bonus XP only if the badge was just earned (guards against concurrent requests)
+            if badge_created and badge.xp_bonus:
                 award_xp(user, 'badge_earned', badge.id, f'Earned badge: {badge.name}',
                           xp_override=badge.xp_bonus)
