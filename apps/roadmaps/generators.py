@@ -31,10 +31,10 @@ _TYPE_ORDER = {'skill': 0, 'assessment': 0, 'project': 1, 'certification': 2}
 
 def _fix_phase_structure(nodes_data):
     """
-    Ensures cert phases contain ONLY certifications.
-    Splits into phase buckets by milestone, finds the first phase with
-    certifications, moves any non-cert nodes (skill, assessment, project)
-    to the phase just before it, then sorts each bucket by type order.
+    Enforces phase purity: cert phases contain ONLY certifications,
+    project phases contain ONLY projects.
+    Works backwards so cascading fixes resolve in a single pass
+    (e.g. skill in Phase 4 → Phase 3 → Phase 2 without needing multiple runs).
     """
     phases, current = [], {'milestone': None, 'nodes': []}
     for node in nodes_data:
@@ -45,17 +45,23 @@ def _fix_phase_structure(nodes_data):
             current['nodes'].append(node)
     phases.append(current)
 
-    cert_phase_idx = next(
-        (i for i, p in enumerate(phases)
-         if any(n.get('node_type') == 'certification' for n in p['nodes'])),
-        None
-    )
-    if cert_phase_idx and cert_phase_idx > 0:
-        for i in range(cert_phase_idx, len(phases)):
-            stray = [n for n in phases[i]['nodes'] if n.get('node_type') != 'certification']
+    for i in range(len(phases) - 1, 0, -1):
+        phase_nodes = phases[i]['nodes']
+        has_cert    = any(n.get('node_type') == 'certification' for n in phase_nodes)
+        has_project = any(n.get('node_type') == 'project' for n in phase_nodes)
+
+        if has_cert:
+            # Cert phase — move every non-cert node to the previous phase
+            stray = [n for n in phase_nodes if n.get('node_type') != 'certification']
             if stray:
-                phases[cert_phase_idx - 1]['nodes'].extend(stray)
-                phases[i]['nodes'] = [n for n in phases[i]['nodes'] if n.get('node_type') == 'certification']
+                phases[i - 1]['nodes'].extend(stray)
+                phases[i]['nodes'] = [n for n in phase_nodes if n.get('node_type') == 'certification']
+        elif has_project:
+            # Project phase — move any skill/assessment nodes to the previous phase
+            stray = [n for n in phase_nodes if n.get('node_type') in ('skill', 'assessment')]
+            if stray:
+                phases[i - 1]['nodes'].extend(stray)
+                phases[i]['nodes'] = [n for n in phase_nodes if n.get('node_type') not in ('skill', 'assessment')]
 
     for phase in phases:
         phase['nodes'].sort(key=lambda n: _TYPE_ORDER.get(n.get('node_type', 'skill'), 0))

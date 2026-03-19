@@ -202,7 +202,7 @@ def repair_roadmap(request, roadmap_pk):
 def fix_structure(request, roadmap_pk):
     """
     POST /api/roadmaps/{id}/fix-structure/
-    Reorders nodes so all project nodes appear before any certification nodes.
+    Enforces phase purity: cert phases → certs only, project phases → projects only.
     Dynamic: works for any number of phases — no hardcoded phase names or positions.
     Idempotent: calling on an already-correct roadmap changes nothing.
     """
@@ -222,17 +222,23 @@ def fix_structure(request, roadmap_pk):
     phases.append(current)
 
     TYPE_ORDER = {'skill': 0, 'assessment': 0, 'project': 1, 'certification': 2}
-    cert_phase_idx = next(
-        (i for i, p in enumerate(phases)
-         if any(n.node_type == 'certification' for n in p['nodes'])),
-        None
-    )
-    if cert_phase_idx and cert_phase_idx > 0:
-        for i in range(cert_phase_idx, len(phases)):
-            stray = [n for n in phases[i]['nodes'] if n.node_type != 'certification']
+
+    # Work backwards so cascading fixes resolve in a single pass
+    for i in range(len(phases) - 1, 0, -1):
+        phase_nodes = phases[i]['nodes']
+        has_cert    = any(n.node_type == 'certification' for n in phase_nodes)
+        has_project = any(n.node_type == 'project' for n in phase_nodes)
+
+        if has_cert:
+            stray = [n for n in phase_nodes if n.node_type != 'certification']
             if stray:
-                phases[cert_phase_idx - 1]['nodes'].extend(stray)
-                phases[i]['nodes'] = [n for n in phases[i]['nodes'] if n.node_type == 'certification']
+                phases[i - 1]['nodes'].extend(stray)
+                phases[i]['nodes'] = [n for n in phase_nodes if n.node_type == 'certification']
+        elif has_project:
+            stray = [n for n in phase_nodes if n.node_type in ('skill', 'assessment')]
+            if stray:
+                phases[i - 1]['nodes'].extend(stray)
+                phases[i]['nodes'] = [n for n in phase_nodes if n.node_type not in ('skill', 'assessment')]
 
     for phase in phases:
         phase['nodes'].sort(key=lambda n: TYPE_ORDER.get(n.node_type, 0))

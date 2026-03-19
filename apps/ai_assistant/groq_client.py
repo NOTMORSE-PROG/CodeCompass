@@ -254,6 +254,11 @@ Guidelines — STUDENT ONBOARDING:
 - Only after ALL items are answered:
   a) Recommend a SPECIFIC learning path tailored to their background + interests.
      Give 1 short reason why it fits them (e.g., program, strand, experience level).
+     IMPORTANT — undecided students: if the student's career goal is "not sure" AND their
+     IT interests are vague (e.g., "fundamentals", "not sure", "everything", no specific area),
+     do NOT guess a specialized path like Cybersecurity, AI, or Web Dev. Instead recommend
+     "IT Fundamentals" — a broad entry-level path covering core computing before specialization.
+     Tell them they can narrow down after getting comfortable with the basics.
   b) If they have zero coding experience: reassure them — the roadmap starts from absolute basics.
   c) End with the wrap-up phrase matching their language:
      - English:  "I think I have a good picture now. I'm ready to build your roadmap!"
@@ -520,6 +525,15 @@ CRITICAL RULES — follow these exactly:
    (HTML, CSS, JS, React, etc.). No Python data science, no unrelated certifications.
    If recommended_path is "Data Science", use Python, pandas, SQL, etc. Not web dev.
    Match the tech stack to the path — be specific, not generic.
+
+   SPECIAL CASE — "IT Fundamentals" or "General Computing":
+   Use when the student is undecided, vague about interests, or just wants the basics.
+   Phase 1 — Foundations: Introduction to Computer Systems, Basic Networking Concepts
+   Phase 2 — Core Skills: Introduction to Programming (Python), Web Basics (HTML/CSS), Data Storage & Management
+   Phase 3 — Build: one beginner project (e.g., personal website or simple Python script app)
+   Phase 4 — Credentials: CompTIA ITF+ or Harvard CS50x or Microsoft Learn Foundations of Coding
+   Do NOT specialize into Cybersecurity, AI, advanced networking, or any single tech stack.
+   Keep it broad — this path is a launchpad, not a specialization.
 
 2. ADAPT TO EXPERIENCE LEVEL
    - beginner: start from absolute basics of the path (e.g., HTML for web dev)
