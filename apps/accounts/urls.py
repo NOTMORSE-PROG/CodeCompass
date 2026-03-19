@@ -16,6 +16,7 @@ urlpatterns = [
     # Google OAuth
     path('google/', views.GoogleOAuthView.as_view(), name='auth-google'),
     path('connect-google/', views.ConnectGoogleView.as_view(), name='auth-connect-google'),
+    path('delete-account/', views.delete_account_view, name='auth-delete-account'),
 
     # Student profile
     path('profiles/student/me/', views.StudentProfileView.as_view(), name='student-profile-me'),

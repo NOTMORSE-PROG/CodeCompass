@@ -289,6 +289,25 @@ class GoogleOAuthView(APIView):
         })
 
 
+@api_view(['DELETE'])
+@permission_classes([permissions.IsAuthenticated])
+def delete_account_view(request):
+    """
+    DELETE /api/auth/delete-account/
+    Permanently deletes the authenticated user's account and all associated data.
+    Blacklists the refresh token if provided so it cannot be reused.
+    """
+    user = request.user
+    refresh_token = request.data.get('refresh')
+    if refresh_token:
+        try:
+            RefreshToken(refresh_token).blacklist()
+        except Exception:
+            pass
+    user.delete()
+    return Response({'detail': 'Account deleted successfully.'}, status=status.HTTP_200_OK)
+
+
 class ConnectGoogleView(APIView):
     """
     POST /api/auth/connect-google/

@@ -128,7 +128,7 @@ QUICK-REPLY SUGGESTIONS (required):
   * Programming experience (English) → [SUGGESTIONS: No experience yet | Some HTML/CSS | Python / Java | Fairly experienced]
   * IT interests (English) → [SUGGESTIONS: Web development | Mobile apps | AI / Data Science | Cybersecurity | Not sure yet]
   * Career goal (English) → [SUGGESTIONS: Software developer | Freelancer | Not sure yet | Game developer]
-  * Learning style (English) → [SUGGESTIONS: Videos | Hands-on projects | Mix of everything | Reading docs]
+  * Career goal (English) → [SUGGESTIONS: Software developer | Freelancer | Not sure yet | Cybersecurity analyst]
 - Do NOT include [SUGGESTIONS: ...] in the wrap-up message.
 - Always adapt suggestions to what the student just said — make them feel personalized.
 
@@ -178,13 +178,8 @@ Guidelines — STUDENT ONBOARDING:
     Generate suggestions IN THE STUDENT'S CHOSEN LANGUAGE. English example:
     [SUGGESTIONS: Build apps | Work in tech | Not sure yet | Freelancer]
 
-  Step 6A — Learning style:
-    Ask how they best pick up new skills.
-    Generate suggestions IN THE STUDENT'S CHOSEN LANGUAGE. English example:
-    [SUGGESTIONS: Videos | Hands-on projects | Mix of everything | Reading docs]
-
   Pre-wrap checklist (SHS — current or fresh grad):
-    [ ] SHS strand  [ ] Programming experience  [ ] IT interests  [ ] Career goal  [ ] Learning style
+    [ ] SHS strand  [ ] Programming experience  [ ] IT interests  [ ] Career goal
     NEVER ask year level or college program — they are not yet enrolled in college.
 
   ── If "Enrolled in college" ─────────────────────────────────────────────────
@@ -214,13 +209,8 @@ Guidelines — STUDENT ONBOARDING:
     Generate suggestions IN THE STUDENT'S CHOSEN LANGUAGE. English example:
     [SUGGESTIONS: Software developer | Freelancer | Not sure yet | Cybersecurity analyst]
 
-  Step 7B — Learning style:
-    Ask how they best pick up new skills.
-    Generate suggestions IN THE STUDENT'S CHOSEN LANGUAGE. English example:
-    [SUGGESTIONS: Videos | Hands-on projects | Mix of everything | Reading docs]
-
   Pre-wrap checklist (enrolled):
-    [ ] Year level  [ ] Program  [ ] Programming skills  [ ] IT focus  [ ] Career goal  [ ] Learning style
+    [ ] Year level  [ ] Program  [ ] Programming skills  [ ] IT focus  [ ] Career goal
 
   ── If "Shifter / Transferee" ────────────────────────────────────────────────
   Step 2C — Previous course:
@@ -253,14 +243,9 @@ Guidelines — STUDENT ONBOARDING:
     Generate suggestions IN THE STUDENT'S CHOSEN LANGUAGE. English example:
     [SUGGESTIONS: Software developer | Freelancer | Not sure yet | Cybersecurity analyst]
 
-  Step 8C — Learning style:
-    Ask how they best pick up new skills.
-    Generate suggestions IN THE STUDENT'S CHOSEN LANGUAGE. English example:
-    [SUGGESTIONS: Videos | Hands-on projects | Mix of everything | Reading docs]
-
   Pre-wrap checklist (shifter):
     [ ] Previous course  [ ] CS subjects completed  [ ] Year level  [ ] Program
-    [ ] IT interests  [ ] Career goal  [ ] Learning style
+    [ ] IT interests  [ ] Career goal
 
   ─────────────────────────────────────────────────────────────────────────────
 
@@ -1258,7 +1243,6 @@ Return ONLY valid JSON (no markdown, no explanation):
   "known_languages": ["list any programming languages or tools they mentioned, or empty array"],
   "interests": ["list of IT areas they expressed interest in"],
   "career_goal": "their stated or inferred goal (be specific, e.g. 'software developer', 'freelancer')",
-  "learning_style": "videos | projects | reading | mixed",
   "recommended_path": "The SPECIFIC learning path the AI recommended in the wrap-up (e.g. 'Web Development', 'Data Science', 'Mobile App Development', 'Backend Development', 'Cybersecurity', 'Game Development'). Infer from the conversation if not explicitly stated.",
   "recommended_path_slug": "snake_case version of recommended_path (e.g. 'web_development', 'data_science')",
   "additional_notes": "any other relevant context"
