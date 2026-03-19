@@ -10,10 +10,14 @@ class Resume(models.Model):
     TEMPLATE_CLASSIC = 'classic'
     TEMPLATE_MODERN = 'modern'
     TEMPLATE_MINIMAL = 'minimal'
+    TEMPLATE_EXECUTIVE = 'executive'
+    TEMPLATE_SIDEBAR_BLUE = 'sidebar-blue'
     TEMPLATE_CHOICES = [
         (TEMPLATE_CLASSIC, 'Classic'),
         (TEMPLATE_MODERN, 'Modern'),
         (TEMPLATE_MINIMAL, 'Minimal'),
+        (TEMPLATE_EXECUTIVE, 'Executive'),
+        (TEMPLATE_SIDEBAR_BLUE, 'Blueprint'),
     ]
 
     user = models.ForeignKey(

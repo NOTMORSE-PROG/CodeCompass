@@ -61,7 +61,7 @@ def generate_bullets(request, pk):
     except Resume.DoesNotExist:
         return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-    job_title = request.data.get('jobTitle', '')
+    job_title = request.data.get('job_title') or request.data.get('jobTitle', '')
     achievement = request.data.get('achievement', '')
 
     if not job_title or not achievement:
@@ -90,13 +90,13 @@ def generate_summary(request, pk):
     Returns: { summaries: [{tone, text}, ...] }
     """
     try:
-        Resume.objects.get(pk=pk, user=request.user)
+        resume = Resume.objects.get(pk=pk, user=request.user)
     except Resume.DoesNotExist:
         return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-    target_role = request.data.get('targetRole', '')
+    target_role = request.data.get('target_role') or request.data.get('targetRole', '')
     strengths = request.data.get('strengths', [])
-    years_exp = request.data.get('yearsExp', 'entry-level')
+    years_exp = request.data.get('years_exp') or request.data.get('yearsExp', 'entry-level')
 
     if not target_role:
         return Response(
@@ -105,7 +105,8 @@ def generate_summary(request, pk):
         )
 
     try:
-        summaries = groq_client.generate_summary(target_role, strengths, years_exp)
+        resume_content = resume.content
+        summaries = groq_client.generate_summary(target_role, strengths, years_exp, resume_content)
         return Response({'summaries': summaries})
     except Exception:
         logger.exception('generate_summary failed for user %s', request.user.pk)
@@ -123,7 +124,7 @@ def parse_job_description(request):
     Body: { jobDescription }
     Returns: { requiredSkills, niceToHaveSkills, keywords, experienceLevel, responsibilities }
     """
-    job_description = request.data.get('jobDescription', '')
+    job_description = request.data.get('job_description') or request.data.get('jobDescription', '')
     if not job_description or len(job_description) < 50:
         return Response(
             {'detail': 'jobDescription must be at least 50 characters.'},
@@ -146,50 +147,127 @@ def parse_job_description(request):
 def score_ats(request, pk):
     """
     POST /api/resumes/{id}/score-ats/
-    Body: { jobKeywords[] }
-    Returns: { score, matchedKeywords[], missingKeywords[], suggestions[] }
+    Body: { parsedJob: { jobTitle, requiredSkills, niceToHaveSkills, keywords } }
+          OR legacy: { jobKeywords[] }
+    Returns: { score, breakdown, matchedKeywords, missingRequired, missingPreferred,
+               missingGeneral, suggestions, scoreLabel }
     """
     try:
         resume = Resume.objects.get(pk=pk, user=request.user)
     except Resume.DoesNotExist:
         return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-    job_keywords = request.data.get('jobKeywords', [])
-    if not job_keywords:
+    parsed_job = request.data.get('parsedJob') or request.data.get('parsed_job', {})
+
+    if parsed_job:
+        job_title = parsed_job.get('jobTitle') or parsed_job.get('job_title', '')
+        required = parsed_job.get('requiredSkills', [])
+        preferred = parsed_job.get('niceToHaveSkills', [])
+        general = parsed_job.get('keywords', [])
+    else:
+        # Backward compat
+        job_title = ''
+        flat = request.data.get('job_keywords') or request.data.get('jobKeywords', [])
+        required = flat
+        preferred = []
+        general = []
+
+    if not required and not preferred and not general:
         return Response(
-            {'detail': 'jobKeywords array is required.'},
+            {'detail': 'parsedJob or jobKeywords is required.'},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    # Build a flat text blob from the resume content for keyword matching
     content = resume.content
     resume_text = _extract_resume_text(content).lower()
 
-    matched = []
-    missing = []
-    for keyword in job_keywords:
-        if keyword.lower() in resume_text:
-            matched.append(keyword)
-        else:
-            missing.append(keyword)
+    # 3-tier weighted keyword scoring
+    keyword_score, req_matched, pref_matched, gen_matched = _keyword_score(
+        required, preferred, general, resume_text
+    )
 
-    total = len(job_keywords)
-    score = round((len(matched) / total) * 100) if total > 0 else 0
+    # Title relevance score
+    title_score = _title_score(job_title, content)
 
-    # Get AI suggestions for missing keywords
+    # Section quality score
+    structure_score = _structure_score(content)
+
+    # Weighted total: keywords 50%, title 25%, structure 25%
+    total_score = round(keyword_score * 0.50 + title_score * 0.25 + structure_score * 0.25)
+
+    missing_required = [k for k in required if k not in req_matched]
+    missing_preferred = [k for k in preferred if k not in pref_matched]
+    missing_general = [k for k in general if k not in gen_matched]
+
     suggestions = []
-    if missing:
+    tagged_missing = (
+        [f'[REQUIRED] {k}' for k in missing_required[:8]] +
+        [f'[PREFERRED] {k}' for k in missing_preferred[:5]] +
+        [f'[GENERAL] {k}' for k in missing_general[:4]]
+    )
+    if tagged_missing:
         try:
-            suggestions = groq_client.get_ats_suggestions(missing)
+            suggestions = groq_client.get_ats_suggestions(tagged_missing)
         except Exception:
             pass
 
     return Response({
-        'score': score,
-        'matchedKeywords': matched,
-        'missingKeywords': missing,
+        'score': total_score,
+        'breakdown': {
+            'keywordScore': keyword_score,
+            'titleScore': title_score,
+            'structureScore': structure_score,
+        },
+        'matchedKeywords': req_matched + pref_matched + gen_matched,
+        'missingRequired': missing_required,
+        'missingPreferred': missing_preferred,
+        'missingGeneral': missing_general,
         'suggestions': suggestions,
+        'scoreLabel': _score_label(total_score),
     })
+
+
+def _keyword_score(required, preferred, general, resume_text):
+    req_matched = [k for k in required if k.lower() in resume_text]
+    pref_matched = [k for k in preferred if k.lower() in resume_text]
+    gen_matched = [k for k in general if k.lower() in resume_text]
+    total_weight = len(required) * 3 + len(preferred) * 2 + len(general) * 1
+    matched_weight = len(req_matched) * 3 + len(pref_matched) * 2 + len(gen_matched) * 1
+    score = round(matched_weight / total_weight * 100) if total_weight else 0
+    return score, req_matched, pref_matched, gen_matched
+
+
+def _title_score(job_title, resume_content):
+    if not job_title:
+        return 50
+    job_words = set(w for w in job_title.lower().split() if len(w) > 2)
+    resume_title_text = (
+        resume_content.get('summary', '') + ' ' +
+        ' '.join(e.get('title', '') for e in resume_content.get('experience', [])[:2])
+    ).lower()
+    matched = sum(1 for w in job_words if w in resume_title_text)
+    return round(matched / len(job_words) * 100) if job_words else 50
+
+
+def _structure_score(content):
+    checks = [
+        bool(content.get('summary', '').strip()),
+        len(content.get('skills', {}).get('technical', [])) >= 3,
+        bool(content.get('experience', [])),
+        any(e.get('bullets') for e in content.get('experience', [])),
+        bool(content.get('education', [])),
+    ]
+    return round(sum(checks) / len(checks) * 100)
+
+
+def _score_label(score):
+    if score >= 85:
+        return 'Excellent Match'
+    if score >= 70:
+        return 'Good Match'
+    if score >= 55:
+        return 'Fair Match'
+    return 'Weak Match'
 
 
 def _extract_resume_text(content: dict) -> str:
