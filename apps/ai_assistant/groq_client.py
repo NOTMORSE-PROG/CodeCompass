@@ -1,9 +1,12 @@
 """
 Groq API client for CodeCompass AI assistant.
 API key is read from Django settings (which reads from .env) — never hardcoded.
+Supports automatic key rotation when a key is rate-limited or exhausted.
 """
 import logging
 import re
+import threading
+import groq as groq_lib
 from django.conf import settings
 from groq import Groq
 
@@ -16,20 +19,71 @@ def _strip_code_fence(raw: str) -> str:
     raw = re.sub(r'\s*```$', '', raw).strip()
     return raw
 
-# Initialize client once at module level (reused across requests)
-_client = None
+# ---------------------------------------------------------------------------
+# Groq key pool — automatic rotation on rate-limit / auth errors
+# ---------------------------------------------------------------------------
+
+_ROTATABLE_ERRORS = (groq_lib.RateLimitError, groq_lib.AuthenticationError)
 
 
-def get_groq_client() -> Groq:
-    """Get or create the Groq client using the API key from settings."""
-    global _client
-    if _client is None:
-        if not settings.GROQ_API_KEY:
-            raise ValueError(
-                'GROQ_API_KEY is not set. Add it to your .env file.'
-            )
-        _client = Groq(api_key=settings.GROQ_API_KEY)
-    return _client
+class _GroqKeyPool:
+    """Holds multiple Groq clients and rotates between them on failure."""
+
+    def __init__(self, api_keys: list):
+        if not api_keys:
+            raise ValueError('GROQ_API_KEYS is not set. Add it to your .env file.')
+        self._clients = [Groq(api_key=k) for k in api_keys]
+        self._index = 0
+        self._lock = threading.Lock()
+
+    @property
+    def current(self) -> Groq:
+        return self._clients[self._index]
+
+    def rotate(self) -> Groq:
+        with self._lock:
+            next_idx = (self._index + 1) % len(self._clients)
+            if next_idx == self._index:
+                raise RuntimeError('All Groq API keys are exhausted.')
+            self._index = next_idx
+            logger.warning('[Groq] Rotated to API key #%d', self._index + 1)
+            return self._clients[self._index]
+
+    @property
+    def num_keys(self) -> int:
+        return len(self._clients)
+
+
+_pool = None
+
+
+def get_groq_client() -> '_GroqKeyPool':
+    """Get or create the Groq key pool from settings."""
+    global _pool
+    if _pool is None:
+        keys = getattr(settings, 'GROQ_API_KEYS', [])
+        _pool = _GroqKeyPool(keys)
+    return _pool
+
+
+def _call_groq_with_rotation(**create_kwargs):
+    """
+    Call client.chat.completions.create(**create_kwargs) with automatic key rotation.
+    Tries each key in the pool before raising the last error.
+    """
+    pool = get_groq_client()
+    last_error = None
+    for _ in range(pool.num_keys):
+        try:
+            return pool.current.chat.completions.create(**create_kwargs)
+        except _ROTATABLE_ERRORS as exc:
+            logger.warning('[Groq] Key error (%s), rotating to next key…', type(exc).__name__)
+            last_error = exc
+            try:
+                pool.rotate()
+            except RuntimeError:
+                break
+    raise last_error
 
 
 # ---------------------------------------------------------------------------
@@ -1064,7 +1118,6 @@ def generate_video_assessment(
     """
     import json
 
-    client = get_groq_client()
     clamped = max(1, min(5, difficulty))
 
     # Incoming students: program is irrelevant (they haven't enrolled); always use simplified staircase
@@ -1141,7 +1194,7 @@ def generate_video_assessment(
             'Conceptual and career-awareness questions only. Plain English throughout.'
         )
 
-    response = client.chat.completions.create(
+    response = _call_groq_with_rotation(
         model='llama-3.3-70b-versatile',
         messages=[
             {'role': 'system', 'content': system_msg},
@@ -1166,10 +1219,9 @@ def generate_roadmap(quiz_summary: dict) -> dict:
     """
     import json
 
-    client = get_groq_client()
     prompt = ROADMAP_GENERATION_PROMPT.format(quiz_summary=json.dumps(quiz_summary, indent=2))
 
-    response = client.chat.completions.create(
+    response = _call_groq_with_rotation(
         model='llama-3.3-70b-versatile',
         messages=[
             {'role': 'system', 'content': 'You are a curriculum designer. Return only valid JSON.'},
@@ -1227,11 +1279,10 @@ def extract_profile_from_chat(messages: list, role: str) -> dict:
     """
     import json
 
-    client = get_groq_client()
     conversation = '\n'.join(f"{m['role'].upper()}: {m['content']}" for m in messages)
     prompt = _PROFILE_EXTRACTION_PROMPT.format(role=role, conversation=conversation)
 
-    response = client.chat.completions.create(
+    response = _call_groq_with_rotation(
         model='llama-3.3-70b-versatile',
         messages=[
             {'role': 'system', 'content': 'Extract student profile as JSON only. No markdown.'},
@@ -1255,13 +1306,11 @@ def stream_chat(messages: list, user_role: str, system_prompt: str = None):
     messages: list of {"role": "user"/"assistant", "content": "..."}
     system_prompt: optional override; defaults to SYSTEM_PROMPT_CAREER_MENTOR
     """
-    client = get_groq_client()
-
     system_messages = [
         {'role': 'system', 'content': system_prompt or SYSTEM_PROMPT_CAREER_MENTOR},
     ]
 
-    stream = client.chat.completions.create(
+    stream = _call_groq_with_rotation(
         model='llama-3.3-70b-versatile',
         messages=system_messages + messages,
         stream=True,

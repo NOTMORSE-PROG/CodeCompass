@@ -3,15 +3,14 @@ Groq-powered AI helpers for the resume creator.
 All prompts return JSON so they can be parsed and sent directly to the frontend.
 """
 import json
-from apps.ai_assistant.groq_client import get_groq_client
+from apps.ai_assistant.groq_client import _call_groq_with_rotation
 
 MODEL = 'llama-3.3-70b-versatile'
 
 
 def _call_groq(prompt: str) -> str:
     """Make a synchronous Groq chat completion and return the message content."""
-    client = get_groq_client()
-    response = client.chat.completions.create(
+    response = _call_groq_with_rotation(
         model=MODEL,
         messages=[
             {

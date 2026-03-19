@@ -235,7 +235,7 @@ FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:5173')
 # ===========================================================================
 # External API Keys — read from env only, never hardcoded
 # ===========================================================================
-GROQ_API_KEY = env('GROQ_API_KEY', default='')
+GROQ_API_KEYS = [k.strip() for k in env('GROQ_API_KEYS', default='').split(',') if k.strip()]
 YOUTUBE_API_KEY = env('YOUTUBE_API_KEY', default='')
 GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID', default='')
 GOOGLE_CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET', default='')
