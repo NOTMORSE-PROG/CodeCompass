@@ -509,6 +509,20 @@ class ConnectGoogleView(APIView):
         user = request.user
         google_email = idinfo.get('email', '').lower().strip()
 
+        # Prevent linking a Google account whose sub is already owned by another account
+        if CustomUser.objects.filter(google_id=google_sub).exclude(pk=user.pk).exists():
+            return Response(
+                {'detail': 'This Google account is already connected to a different CodeCompass account.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        # Prevent linking a Google account whose email is already a separate CodeCompass account
+        if CustomUser.objects.filter(email=google_email).exclude(pk=user.pk).exists():
+            return Response(
+                {'detail': 'This Google account\'s email is already registered as a separate CodeCompass account.'},
+                status=status.HTTP_409_CONFLICT,
+            )
+
         if google_email != user.email.lower():
             return Response(
                 {'detail': 'The Google account email does not match your account email.'},
