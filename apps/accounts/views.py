@@ -1,7 +1,9 @@
 """
 Auth and profile views for the accounts app.
 """
+import logging
 import re
+
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
 from django.core import signing
@@ -29,6 +31,8 @@ from .serializers import (
     StudentProfileSerializer,
     UserSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _generate_username(email):
@@ -101,8 +105,11 @@ class RegisterView(generics.CreateAPIView):
         user = serializer.save()
 
         from .tasks import task_send_verification_email, task_send_welcome_email
-        task_send_verification_email.delay(user.pk)
-        task_send_welcome_email.delay(user.pk)
+        try:
+            task_send_verification_email.delay(user.pk)
+            task_send_welcome_email.delay(user.pk)
+        except Exception:
+            logger.exception('Failed to queue email tasks for new user %s', user.pk)
 
         access, refresh = _issue_tokens(user)
         return Response(
@@ -280,7 +287,10 @@ class GoogleOAuthView(APIView):
             user_changed = True
             StudentProfile.objects.get_or_create(user=user, defaults={'year_level': '1st'})
             from .tasks import task_send_welcome_email
-            task_send_welcome_email.delay(user.pk)
+            try:
+                task_send_welcome_email.delay(user.pk)
+            except Exception:
+                logger.exception('Failed to queue welcome email for new Google user %s', user.pk)
 
         # Store google_id for all Google logins (enables "Google Connected" tracking)
         if not user.google_id and google_sub:

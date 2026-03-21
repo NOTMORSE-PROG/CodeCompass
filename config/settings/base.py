@@ -296,3 +296,12 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'Asia/Manila'
+
+# Upstash / production Redis uses rediss:// (SSL). Celery requires an explicit
+# ssl_cert_reqs value — without it the backend raises ValueError and crashes
+# any view that calls task.delay(). CERT_NONE keeps encryption but skips cert
+# verification, which is fine for managed providers. Local redis:// is unaffected.
+if REDIS_URL.startswith('rediss://'):
+    import ssl
+    CELERY_REDIS_BACKEND_USE_SSL = {'ssl_cert_reqs': ssl.CERT_NONE}
+    CELERY_BROKER_TRANSPORT_OPTIONS = {'ssl_cert_reqs': ssl.CERT_NONE}
