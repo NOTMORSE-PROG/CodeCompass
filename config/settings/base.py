@@ -172,6 +172,7 @@ REST_FRAMEWORK = {
         'user': '1000/day',
         'register': '5/hour',
         'login': '10/hour',
+        'password_reset': '5/hour',
     },
 }
 
@@ -229,6 +230,7 @@ EMAIL_PORT = env.int('EMAIL_PORT', default=587)
 EMAIL_USE_TLS = True
 EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='CodeCompass <noreply@codecompass.app>')
 
 FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:5173')
 

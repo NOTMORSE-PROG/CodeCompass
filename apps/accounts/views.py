@@ -3,6 +3,10 @@ Auth and profile views for the accounts app.
 """
 import re
 from django.conf import settings
+from django.contrib.auth.tokens import default_token_generator
+from django.core import signing
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
 from rest_framework import generics, status, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -16,11 +20,14 @@ from google.auth.transport import requests as google_requests
 from .models import CustomUser, StudentProfile
 from .permissions import IsStudent
 from .serializers import (
-    RegisterSerializer,
-    UserSerializer,
-    StudentProfileSerializer,
     ChangePasswordSerializer,
+    ForgotPasswordSerializer,
+    RegisterSerializer,
+    ResendVerificationSerializer,
+    ResetPasswordSerializer,
     RoleTokenObtainPairSerializer,
+    StudentProfileSerializer,
+    UserSerializer,
 )
 
 
@@ -44,6 +51,7 @@ def _issue_tokens(user):
     refresh['is_onboarded'] = user.is_onboarded
     refresh['has_password'] = user.has_usable_password()
     refresh['google_connected'] = bool(user.google_id)
+    refresh['email_verified'] = user.email_verified
     return str(refresh.access_token), str(refresh)
 
 
@@ -91,6 +99,10 @@ class RegisterView(generics.CreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+
+        from .tasks import task_send_verification_email, task_send_welcome_email
+        task_send_verification_email.delay(user.pk)
+        task_send_welcome_email.delay(user.pk)
 
         access, refresh = _issue_tokens(user)
         return Response(
@@ -264,12 +276,20 @@ class GoogleOAuthView(APIView):
         # Mark new Google users as having no password and store their Google sub
         if created:
             user.set_unusable_password()
+            user.email_verified = True  # Google already verified the email
             user_changed = True
             StudentProfile.objects.get_or_create(user=user, defaults={'year_level': '1st'})
+            from .tasks import task_send_welcome_email
+            task_send_welcome_email.delay(user.pk)
 
         # Store google_id for all Google logins (enables "Google Connected" tracking)
         if not user.google_id and google_sub:
             user.google_id = google_sub
+            user_changed = True
+
+        # Backfill email_verified for existing Google users on next login
+        if not user.email_verified and user.google_id:
+            user.email_verified = True
             user_changed = True
 
         if user_changed:
@@ -306,6 +326,136 @@ def delete_account_view(request):
             pass
     user.delete()
     return Response({'detail': 'Account deleted successfully.'}, status=status.HTTP_200_OK)
+
+
+# ---------------------------------------------------------------------------
+# Email Verification
+# ---------------------------------------------------------------------------
+
+class VerifyEmailView(APIView):
+    """
+    GET /api/auth/verify-email/<token>/
+    Validates a signed verification token and marks the user's email as verified.
+    Token expires after 24 hours.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, token):
+        try:
+            user_pk = signing.loads(token, salt='email-verification', max_age=86400)
+        except signing.SignatureExpired:
+            return Response(
+                {'detail': 'Verification link has expired. Please request a new one.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except signing.BadSignature:
+            return Response(
+                {'detail': 'Invalid verification link.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            user = CustomUser.objects.get(pk=user_pk)
+        except CustomUser.DoesNotExist:
+            return Response({'detail': 'Invalid verification link.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.email_verified = True
+        user.save(update_fields=['email_verified'])
+        return Response({'detail': 'Email verified successfully.'}, status=status.HTTP_200_OK)
+
+
+class ResendVerificationView(APIView):
+    """
+    POST /api/auth/resend-verification/
+    Re-sends the email verification link. Always returns 200 regardless of whether
+    the email exists, to avoid leaking account information.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = ResendVerificationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email'].lower().strip()
+
+        try:
+            user = CustomUser.objects.get(email=email)
+            if not user.email_verified:
+                from .tasks import task_send_verification_email
+                task_send_verification_email.delay(user.pk)
+        except CustomUser.DoesNotExist:
+            pass  # Never reveal whether the email exists
+
+        return Response(
+            {'detail': 'If that email is registered and unverified, a new verification link has been sent.'},
+            status=status.HTTP_200_OK,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Password Reset
+# ---------------------------------------------------------------------------
+
+class PasswordResetRateThrottle(AnonRateThrottle):
+    scope = 'password_reset'
+
+
+class ForgotPasswordView(APIView):
+    """
+    POST /api/auth/forgot-password/
+    Sends a password reset email. Always returns 200 to avoid leaking account info.
+    Skips Google-only accounts (no usable password to reset).
+    """
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [PasswordResetRateThrottle]
+
+    def post(self, request):
+        serializer = ForgotPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email'].lower().strip()
+
+        try:
+            user = CustomUser.objects.get(email=email)
+            if user.has_usable_password():
+                from .tasks import task_send_password_reset_email
+                task_send_password_reset_email.delay(user.pk)
+        except CustomUser.DoesNotExist:
+            pass  # Never reveal whether the email exists
+
+        return Response(
+            {'detail': 'If that email has an account, a password reset link has been sent.'},
+            status=status.HTTP_200_OK,
+        )
+
+
+class ResetPasswordView(APIView):
+    """
+    POST /api/auth/reset-password/
+    Validates the uid + token from the reset email and sets a new password.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = ResetPasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            uid = force_str(urlsafe_base64_decode(serializer.validated_data['uidb64']))
+            user = CustomUser.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
+            return Response(
+                {'detail': 'Invalid or expired reset link.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if not default_token_generator.check_token(user, serializer.validated_data['token']):
+            return Response(
+                {'detail': 'Invalid or expired reset link.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user.set_password(serializer.validated_data['new_password'])
+        user.save()
+        return Response({'detail': 'Password reset successfully.'}, status=status.HTTP_200_OK)
 
 
 class ConnectGoogleView(APIView):

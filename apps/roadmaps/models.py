@@ -146,3 +146,29 @@ class AssessmentSession(models.Model):
 
     def __str__(self):
         return f'AssessmentSession(user={self.user_id}, resource={self.resource_id}, passed={self.passed})'
+
+
+class ReflectionLog(models.Model):
+    """
+    Stores a student's written reflection on a YouTube video resource,
+    along with the AI's pass/fail verdict. Provides concrete proof of learning
+    that can be reviewed by instructors.
+    """
+    user = models.ForeignKey(
+        'accounts.CustomUser', on_delete=models.CASCADE,
+        related_name='reflection_logs'
+    )
+    resource = models.ForeignKey(
+        NodeResource, on_delete=models.CASCADE,
+        related_name='reflections'
+    )
+    text = models.TextField()
+    ai_passed = models.BooleanField()
+    ai_feedback = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'ReflectionLog(user={self.user_id}, resource={self.resource_id}, passed={self.ai_passed})'

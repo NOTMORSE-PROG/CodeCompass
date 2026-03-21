@@ -30,6 +30,7 @@ class CustomUser(AbstractUser):
     avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
     is_onboarded = models.BooleanField(default=False)
     google_id = models.CharField(max_length=255, null=True, blank=True, db_index=True)
+    email_verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -13,6 +13,14 @@ urlpatterns = [
     path('me/', views.MeView.as_view(), name='auth-me'),
     path('change-password/', views.change_password_view, name='auth-change-password'),
 
+    # Email verification
+    path('verify-email/<str:token>/', views.VerifyEmailView.as_view(), name='auth-verify-email'),
+    path('resend-verification/', views.ResendVerificationView.as_view(), name='auth-resend-verification'),
+
+    # Password reset
+    path('forgot-password/', views.ForgotPasswordView.as_view(), name='auth-forgot-password'),
+    path('reset-password/', views.ResetPasswordView.as_view(), name='auth-reset-password'),
+
     # Google OAuth
     path('google/', views.GoogleOAuthView.as_view(), name='auth-google'),
     path('connect-google/', views.ConnectGoogleView.as_view(), name='auth-connect-google'),

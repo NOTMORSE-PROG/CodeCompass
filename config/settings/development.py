@@ -7,9 +7,6 @@ from .base import *  # noqa: F403
 
 DEBUG = True
 
-# Show emails in console during development
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-
 # Allow all hosts in development
 ALLOWED_HOSTS = ['*']
 
