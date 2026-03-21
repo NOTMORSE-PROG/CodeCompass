@@ -102,6 +102,76 @@ class RecommendedJobsView(APIView):
         return Response(serializer.data)
 
 
+class RecommendFromResumeView(APIView):
+    """POST /api/jobs/recommend-from-resume/ — Top 8 jobs matched to an uploaded resume PDF."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        resume_text = request.data.get('resume_text', '').strip()
+        if len(resume_text) < 100:
+            return Response(
+                {'detail': 'Resume text too short. Please upload a valid resume PDF.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Ensure there are jobs in the DB to match against
+        _ensure_jobs_seeded()
+
+        from .groq_client import extract_resume_skills
+        extracted = extract_resume_skills(resume_text)
+
+        keywords = (
+            extracted.get('skills', []) +
+            extracted.get('roles', []) +
+            extracted.get('keywords', [])
+        )
+
+        base_qs = JobListing.objects.filter(is_active=True)
+
+        if keywords:
+            from django.db.models import Q
+            tokens = set()
+            for kw in keywords:
+                for word in str(kw).split():
+                    w = word.strip()
+                    if len(w) >= 3:
+                        tokens.add(w)
+
+            query = Q()
+            for token in tokens:
+                query |= (
+                    Q(title__icontains=token) |
+                    Q(description__icontains=token) |
+                    Q(required_skills__icontains=token)
+                )
+
+            jobs = list(base_qs.filter(query)[:8])
+            if not jobs:
+                jobs = list(base_qs.order_by('-fetched_at')[:8])
+        else:
+            jobs = list(base_qs.order_by('-fetched_at')[:8])
+
+        # Compute which user keywords actually appear in each job (for UI explanations)
+        def matched_terms_for(job):
+            haystack = ' '.join([
+                job.title or '',
+                job.description or '',
+                str(job.required_skills or ''),
+            ]).lower()
+            seen = []
+            for kw in keywords:
+                kw_str = str(kw).strip()
+                if kw_str and kw_str.lower() in haystack and kw_str not in seen:
+                    seen.append(kw_str)
+            return seen[:6]  # cap at 6 to keep UI clean
+
+        serializer = JobListingSerializer(jobs, many=True)
+        results = []
+        for job_data, job_obj in zip(serializer.data, jobs):
+            results.append({**job_data, 'match_terms': matched_terms_for(job_obj)})
+        return Response(results)
+
+
 class SavedJobListView(generics.ListAPIView):
     """GET /api/jobs/saved/ — User's saved jobs."""
     serializer_class = SavedJobSerializer
