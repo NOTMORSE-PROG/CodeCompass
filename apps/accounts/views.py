@@ -2,7 +2,11 @@
 Auth and profile views for the accounts app.
 """
 import logging
+import random
 import re
+import threading
+
+from django.core.cache import cache
 
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
@@ -19,6 +23,12 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
+from .emails import (
+    send_change_password_otp,
+    send_password_reset_email,
+    send_verification_email,
+    send_welcome_email,
+)
 from .models import CustomUser, StudentProfile
 from .permissions import IsStudent
 from .serializers import (
@@ -33,6 +43,16 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _email_in_thread(fn, *args):
+    """Run an email function in a daemon thread — non-blocking, no Celery worker required."""
+    def _run():
+        try:
+            fn(*args)
+        except Exception:
+            logger.exception('Email send failed: %s(%s)', fn.__name__, args)
+    threading.Thread(target=_run, daemon=True).start()
 
 
 def _generate_username(email):
@@ -104,12 +124,8 @@ class RegisterView(generics.CreateAPIView):
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        from .tasks import task_send_verification_email, task_send_welcome_email
-        try:
-            task_send_verification_email.delay(user.pk)
-            task_send_welcome_email.delay(user.pk)
-        except Exception:
-            logger.exception('Failed to queue email tasks for new user %s', user.pk)
+        _email_in_thread(send_verification_email, user)
+        _email_in_thread(send_welcome_email, user)
 
         access, refresh = _issue_tokens(user)
         return Response(
@@ -152,40 +168,66 @@ class MeView(generics.RetrieveUpdateAPIView):
 
 @api_view(['POST'])
 @permission_classes([permissions.IsAuthenticated])
-def change_password_view(request):
+def send_change_password_otp_view(request):
     """
-    POST /api/auth/change-password/
-    Changes the user's password. Accepts an optional 'refresh' token in the body;
-    if provided, the old refresh token is blacklisted and a fresh token pair is returned,
-    ensuring the session reflects the new password immediately.
+    POST /api/auth/send-change-password-otp/
+    Generates a 6-digit OTP, caches it for 10 minutes, and emails it to the user.
+    Only available to users with a usable password (not pure Google accounts).
     """
     user = request.user
     if not user.has_usable_password():
         return Response(
-            {'detail': 'Password change is not available for Google accounts.'},
+            {'detail': 'Password change is not available for Google-only accounts.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    otp = str(random.randint(100000, 999999))
+    cache_key = f'change_pw_otp_{user.pk}'
+    cache.set(cache_key, otp, timeout=600)  # 10 minutes
+
+    _email_in_thread(send_change_password_otp, user, otp)
+    return Response({'detail': 'OTP sent to your email.'}, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def change_password_view(request):
+    """
+    POST /api/auth/change-password/
+    Verifies the OTP sent via send-change-password-otp, then changes the password.
+    Returns a fresh token pair so the client session stays valid.
+    """
+    user = request.user
+    if not user.has_usable_password():
+        return Response(
+            {'detail': 'Password change is not available for Google-only accounts.'},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
     serializer = ChangePasswordSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
-    if not user.check_password(serializer.validated_data['old_password']):
+    # Verify OTP
+    cache_key = f'change_pw_otp_{user.pk}'
+    stored_otp = cache.get(cache_key)
+    if not stored_otp or stored_otp != serializer.validated_data['otp']:
         return Response(
-            {'old_password': ['Incorrect current password.']},
+            {'otp': ['Invalid or expired code. Request a new one.']},
             status=status.HTTP_400_BAD_REQUEST,
         )
+
+    cache.delete(cache_key)  # One-time use
 
     user.set_password(serializer.validated_data['new_password'])
     user.save()
 
-    # Blacklist the old refresh token and issue a fresh pair so the client
-    # session is immediately up-to-date without requiring a re-login.
+    # Blacklist the old refresh token and issue a fresh pair.
     old_refresh_token = request.data.get('refresh')
     if old_refresh_token:
         try:
             RefreshToken(old_refresh_token).blacklist()
         except Exception:
-            pass  # Expired / already blacklisted — not a blocker
+            pass
 
     access, refresh = _issue_tokens(user)
     return Response({
@@ -286,11 +328,7 @@ class GoogleOAuthView(APIView):
             user.email_verified = True  # Google already verified the email
             user_changed = True
             StudentProfile.objects.get_or_create(user=user, defaults={'year_level': '1st'})
-            from .tasks import task_send_welcome_email
-            try:
-                task_send_welcome_email.delay(user.pk)
-            except Exception:
-                logger.exception('Failed to queue welcome email for new Google user %s', user.pk)
+            _email_in_thread(send_welcome_email, user)
 
         # Store google_id for all Google logins (enables "Google Connected" tracking)
         if not user.google_id and google_sub:
@@ -371,7 +409,14 @@ class VerifyEmailView(APIView):
 
         user.email_verified = True
         user.save(update_fields=['email_verified'])
-        return Response({'detail': 'Email verified successfully.'}, status=status.HTTP_200_OK)
+        # Issue fresh tokens so the frontend immediately gets email_verified=true in the JWT,
+        # even if the user clicked the link from a different device/browser.
+        access, refresh = _issue_tokens(user)
+        return Response({
+            'detail': 'Email verified successfully.',
+            'access': access,
+            'refresh': refresh,
+        }, status=status.HTTP_200_OK)
 
 
 class ResendVerificationView(APIView):
@@ -390,8 +435,7 @@ class ResendVerificationView(APIView):
         try:
             user = CustomUser.objects.get(email=email)
             if not user.email_verified:
-                from .tasks import task_send_verification_email
-                task_send_verification_email.delay(user.pk)
+                _email_in_thread(send_verification_email, user)
         except CustomUser.DoesNotExist:
             pass  # Never reveal whether the email exists
 
@@ -426,8 +470,7 @@ class ForgotPasswordView(APIView):
         try:
             user = CustomUser.objects.get(email=email)
             if user.has_usable_password():
-                from .tasks import task_send_password_reset_email
-                task_send_password_reset_email.delay(user.pk)
+                _email_in_thread(send_password_reset_email, user)
         except CustomUser.DoesNotExist:
             pass  # Never reveal whether the email exists
 

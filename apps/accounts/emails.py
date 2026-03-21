@@ -48,6 +48,16 @@ def send_welcome_email(user):
     )
 
 
+def send_change_password_otp(user, otp):
+    """Send a 6-digit OTP for the change-password flow."""
+    _send(
+        subject='Your CodeCompass password change code',
+        template_prefix='change_password_otp',
+        context={'user': user, 'otp': otp},
+        recipient_email=user.email,
+    )
+
+
 def send_password_reset_email(user):
     """Send password reset link using Django's built-in token generator."""
     uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
