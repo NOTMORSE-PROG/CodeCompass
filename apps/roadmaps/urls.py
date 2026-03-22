@@ -17,6 +17,4 @@ urlpatterns = [
          views.start_assessment, name='assessment-start'),
     path('<int:roadmap_pk>/nodes/<int:node_pk>/resources/<int:resource_pk>/assessment/<int:session_pk>/submit/',
          views.submit_assessment, name='assessment-submit'),
-    path('<int:roadmap_pk>/nodes/<int:node_pk>/resources/<int:resource_pk>/reflection/',
-         views.evaluate_reflection, name='reflection-evaluate'),
 ]

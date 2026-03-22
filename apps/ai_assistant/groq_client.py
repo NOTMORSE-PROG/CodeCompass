@@ -1211,52 +1211,6 @@ def generate_video_assessment(
         return []
 
 
-def evaluate_reflection(text: str, resource_title: str, node_title: str) -> dict:
-    """
-    Evaluate a student's written reflection for genuine understanding of a video lesson.
-    Returns {"passed": bool, "feedback": str}
-    feedback is an empty string on pass, or a single coaching sentence on fail.
-    """
-    import json
-
-    system_msg = (
-        'You are a learning assessor for Filipino CS students. '
-        'Evaluate whether the student\'s reflection shows genuine understanding '
-        'of the video topic. Return ONLY valid JSON: {"passed": true/false, "feedback": "..."}. '
-        'No markdown, no extra text.\n\n'
-        'PASS criteria (all must be met):\n'
-        '1. The reflection is relevant to the topic — not random text or off-topic.\n'
-        '2. The student mentions at least one specific concept, term, or idea from the lesson.\n'
-        '3. The student shows understanding — not just "I watched and learned stuff".\n\n'
-        'FAIL if the reflection is vague, off-topic, or merely restates the video title.\n'
-        'feedback: If failed, give ONE short specific sentence telling them what to add. '
-        'If passed, return an empty string "".'
-    )
-    user_msg = (
-        f'Video topic: {resource_title}\n'
-        f'Node/lesson: {node_title}\n\n'
-        f'Student reflection:\n"""\n{text}\n"""'
-    )
-
-    response = _call_groq_with_rotation(
-        model='llama-3.3-70b-versatile',
-        messages=[
-            {'role': 'system', 'content': system_msg},
-            {'role': 'user',   'content': user_msg},
-        ],
-        temperature=0.2,
-        max_tokens=200,
-    )
-
-    raw = _strip_code_fence(response.choices[0].message.content)
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        # Fail-safe: if parsing fails, let the student through rather than block indefinitely
-        logger.error('[Groq] evaluate_reflection: invalid JSON. Raw: %.200s', raw)
-        return {'passed': True, 'feedback': ''}
-
-
 def generate_roadmap(quiz_summary: dict) -> dict:
     """
     Call Groq to generate a roadmap JSON from a student's quiz summary.
