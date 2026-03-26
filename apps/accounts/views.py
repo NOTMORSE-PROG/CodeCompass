@@ -288,7 +288,8 @@ class GoogleOAuthView(APIView):
                 google_requests.Request(),
                 settings.GOOGLE_CLIENT_ID,
             )
-        except ValueError:
+        except ValueError as _e:
+            logger.error('GoogleOAuthView verify failed: %s', _e)
             return Response(
                 {'detail': 'Invalid or expired Google token.'},
                 status=status.HTTP_400_BAD_REQUEST,

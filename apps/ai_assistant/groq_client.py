@@ -771,7 +771,7 @@ Return ONLY valid JSON, no markdown, no explanation:
 
 ASSESSMENT_PROMPT = """
 You are an expert assessor for Filipino CCS (College of Computing Studies) students.
-Generate exactly 5 multiple-choice questions in ASCENDING Bloom's taxonomy order (Q1 easiest → Q5 hardest).
+Generate exactly 10 multiple-choice questions in ASCENDING Bloom's taxonomy order (Q1 easiest → Q10 hardest).
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CONTEXT
@@ -902,7 +902,7 @@ DATA SCIENCE
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 STRICT RULES:
-- Exactly 5 questions, Q1 → Q5 in ascending Bloom's level as specified in the staircase above
+- Exactly 10 questions, Q1 → Q10 in ascending Bloom's level as specified in the staircase above
 - Each question: exactly 4 options (a, b, c, d) — ALL must be plausible, no throwaway answers
 - Vary the correct letter — spread across a, b, c, d; do NOT cluster answers at a or b
 - explanation: exactly 2 sentences — (1) why the correct answer is right, (2) why the most tempting wrong answer is wrong and what misconception it represents
@@ -911,7 +911,7 @@ STRICT RULES:
 - All content in English; no Tagalog in technical questions
 - Do NOT use "all of the above" or "none of the above"
 
-Return ONLY a valid JSON array of exactly 5 objects. No markdown. No extra text:
+Return ONLY a valid JSON array of exactly 10 objects. No markdown. No extra text:
 [
   {{
     "question": "Full question text here (include code block if applicable)?",
@@ -942,14 +942,14 @@ _L = {
 }
 
 _BLOOM_STAIRCASE = {
-    # difficulty: [Q1, Q2, Q3, Q4, Q5]
-    1: [_L[1], _L[1], _L[2], _L[2], _L[2]],
-    2: [_L[1], _L[2], _L[2], _L[3], _L[3]],
-    3: [_L[1], _L[2], _L[3], _L[3], _L[4]],
-    4: [_L[2], _L[2], _L[3], _L[4], _L[4]],
-    5: [_L[2], _L[3], _L[4], _L[4], _L[5]],
+    # difficulty: [Q1, Q2, Q3, Q4, Q5, Q6, Q7, Q8, Q9, Q10]
+    1: [_L[1], _L[1], _L[2], _L[2], _L[2], _L[2], _L[2], _L[3], _L[3], _L[3]],
+    2: [_L[1], _L[2], _L[2], _L[3], _L[3], _L[3], _L[3], _L[3], _L[4], _L[4]],
+    3: [_L[1], _L[2], _L[3], _L[3], _L[4], _L[3], _L[3], _L[4], _L[4], _L[5]],
+    4: [_L[2], _L[2], _L[3], _L[4], _L[4], _L[3], _L[4], _L[4], _L[5], _L[5]],
+    5: [_L[2], _L[3], _L[4], _L[4], _L[5], _L[3], _L[4], _L[5], _L[5], _L[5]],
     # incoming students always get this regardless of node difficulty
-    'incoming': [_L[1], _L[1], _L[2], _L[2], _L[2]],
+    'incoming': [_L[1], _L[1], _L[2], _L[2], _L[2], _L[1], _L[2], _L[2], _L[2], _L[3]],
 }
 
 
@@ -1096,7 +1096,7 @@ def generate_video_assessment(
     youtube_video_id: str = '',
 ) -> list:
     """
-    Generate 5 MCQ questions for a YouTube video resource.
+    Generate 10 MCQ questions for a YouTube video resource.
 
     Parameters:
       difficulty (1–5): Bloom's ceiling for this node
@@ -1182,8 +1182,8 @@ def generate_video_assessment(
 
     system_msg = (
         'You are an expert CS education assessor for Filipino university students (CHED-aligned CCS programs). '
-        'Return only a valid JSON array of exactly 5 MCQ objects. No markdown, no extra text. '
-        'Follow the Bloom\'s staircase strictly — Q1 must be the easiest, Q5 the hardest. '
+        'Return only a valid JSON array of exactly 10 MCQ objects. No markdown, no extra text. '
+        'Follow the Bloom\'s staircase strictly — Q1 must be the easiest, Q10 the hardest. '
         'Every distractor must reflect a documented student misconception, not a random wrong answer. '
         'Respect the program scope — do not generate questions on topics outside the student\'s program.'
     )
@@ -1200,7 +1200,7 @@ def generate_video_assessment(
             {'role': 'user', 'content': prompt},
         ],
         temperature=0.95,
-        max_tokens=1900,
+        max_tokens=4000,
     )
 
     raw = _strip_code_fence(response.choices[0].message.content)
