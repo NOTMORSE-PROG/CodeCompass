@@ -7,7 +7,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from apps.accounts.permissions import IsStudent
 from apps.gamification.engine import award_xp
-from .models import Roadmap, RoadmapNode, NodeResource, AssessmentSession
+from .models import Roadmap, RoadmapNode, NodeResource, AssessmentSession, VideoWatchUnlock
 from .serializers import RoadmapSerializer, RoadmapListSerializer, RoadmapNodeSerializer
 
 # ---------------------------------------------------------------------------
@@ -646,3 +646,25 @@ def remove_roadmap_node(request, roadmap_pk, node_pk):
     roadmap = Roadmap.objects.get(pk=roadmap_pk)
     roadmap.recalculate_completion()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def unlock_video_watch(request, roadmap_pk, node_pk, resource_pk):
+    """
+    POST /api/roadmaps/{id}/nodes/{nid}/resources/{rid}/unlock/
+    Record that the user has watched enough video (≥5 min) to unlock the quiz.
+    Idempotent — safe to call multiple times.
+    """
+    try:
+        resource = NodeResource.objects.get(
+            pk=resource_pk,
+            node__pk=node_pk,
+            node__roadmap__pk=roadmap_pk,
+            node__roadmap__user=request.user,
+        )
+    except NodeResource.DoesNotExist:
+        return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    VideoWatchUnlock.objects.get_or_create(user=request.user, resource=resource)
+    return Response({'unlocked': True})

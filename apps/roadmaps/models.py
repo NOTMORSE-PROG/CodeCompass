@@ -146,3 +146,22 @@ class AssessmentSession(models.Model):
 
     def __str__(self):
         return f'AssessmentSession(user={self.user_id}, resource={self.resource_id}, passed={self.passed})'
+
+
+class VideoWatchUnlock(models.Model):
+    """
+    Records that a user has watched enough of a video (≥5 min) to unlock the quiz.
+    Persisted so the unlock survives logout and works cross-device (mobile).
+    """
+    user = models.ForeignKey(
+        'accounts.CustomUser', on_delete=models.CASCADE,
+        related_name='video_watch_unlocks'
+    )
+    resource = models.ForeignKey(
+        NodeResource, on_delete=models.CASCADE,
+        related_name='video_watch_unlocks'
+    )
+    unlocked_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'resource')

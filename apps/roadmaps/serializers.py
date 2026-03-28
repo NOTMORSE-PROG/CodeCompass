@@ -3,11 +3,19 @@ from .models import Roadmap, RoadmapNode, NodeResource, NodeProgress
 
 
 class NodeResourceSerializer(serializers.ModelSerializer):
+    watch_unlocked = serializers.SerializerMethodField()
+
     class Meta:
         model = NodeResource
         fields = ['id', 'resource_type', 'title', 'url', 'description',
                   'thumbnail_url', 'duration_minutes', 'is_free', 'language',
-                  'youtube_video_id', 'youtube_channel', 'order']
+                  'youtube_video_id', 'youtube_channel', 'order', 'watch_unlocked']
+
+    def get_watch_unlocked(self, obj):
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.video_watch_unlocks.filter(user=request.user).exists()
 
 
 class RoadmapNodeSerializer(serializers.ModelSerializer):
