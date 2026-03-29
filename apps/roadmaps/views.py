@@ -668,3 +668,93 @@ def unlock_video_watch(request, roadmap_pk, node_pk, resource_pk):
 
     VideoWatchUnlock.objects.get_or_create(user=request.user, resource=resource)
     return Response({'unlocked': True})
+
+
+@api_view(['POST'])
+@permission_classes([IsStudent])
+def switch_roadmap(request):
+    """
+    POST /api/roadmaps/switch/
+    Archives the current active roadmap and generates a new one for the given path/goal.
+    Body: { "roadmap_id": <int>, "new_path": "Data Science", "career_goal": "data analyst" }
+    Rate-limited to one switch per calendar day (PH timezone).
+    """
+    from apps.ai_assistant.groq_client import generate_roadmap as ai_generate
+    from .generators import save_roadmap_from_ai
+    from slugify import slugify
+    from django.utils import timezone as tz
+    import zoneinfo
+
+    user = request.user
+    roadmap_id = request.data.get('roadmap_id')
+    new_path = (request.data.get('new_path') or '').strip()
+    career_goal = (request.data.get('career_goal') or '').strip()
+
+    if not all([roadmap_id, new_path, career_goal]):
+        return Response({'detail': 'roadmap_id, new_path, and career_goal are required.'}, status=400)
+
+    # Verify ownership and active status
+    try:
+        old_roadmap = Roadmap.objects.get(pk=roadmap_id, user=user, status=Roadmap.Status.ACTIVE)
+    except Roadmap.DoesNotExist:
+        return Response({'detail': 'Active roadmap not found.'}, status=404)
+
+    # Rate limit: one switch per calendar day (PH timezone = UTC+8)
+    ph_tz = zoneinfo.ZoneInfo('Asia/Manila')
+    today_ph = tz.now().astimezone(ph_tz).date()
+    already_switched_today = Roadmap.objects.filter(
+        user=user,
+        status=Roadmap.Status.ARCHIVED,
+        updated_at__date=today_ph,
+    ).exists()
+    if already_switched_today:
+        return Response(
+            {'detail': 'You can only switch your learning path once per day. Please try again tomorrow.'},
+            status=429,
+        )
+
+    # Build updated summary from existing onboarding data
+    try:
+        summary = dict(user.onboarding_session.onboarding_summary or {})
+    except Exception:
+        return Response({'detail': 'Onboarding session not found.'}, status=400)
+
+    summary['recommended_path'] = new_path
+    summary['career_goal'] = career_goal
+    summary['recommended_path_slug'] = slugify(new_path, separator='_')
+
+    # Archive the old roadmap
+    # NOTE: 'updated_at' must be explicitly included — auto_now does NOT fire when using update_fields
+    old_roadmap.status = Roadmap.Status.ARCHIVED
+    old_roadmap.is_primary = False
+    old_roadmap.updated_at = tz.now()
+    old_roadmap.save(update_fields=['status', 'is_primary', 'updated_at'])
+
+    # Clean up any stuck GENERATING roadmaps
+    Roadmap.objects.filter(user=user, status=Roadmap.Status.GENERATING).delete()
+
+    # Create placeholder for new roadmap
+    new_roadmap = Roadmap.objects.create(
+        user=user,
+        title='Generating your new roadmap...',
+        career_path='pending',
+        status=Roadmap.Status.GENERATING,
+        is_primary=True,
+    )
+
+    try:
+        ai_data = ai_generate(summary)
+        save_roadmap_from_ai(new_roadmap, ai_data)
+        # Persist updated summary so future generations use the new path
+        user.onboarding_session.onboarding_summary = summary
+        user.onboarding_session.save(update_fields=['onboarding_summary'])
+    except Exception as e:
+        new_roadmap.delete()
+        # Restore old roadmap — also reset updated_at so the rate-limit counter isn't consumed on failure
+        old_roadmap.status = Roadmap.Status.ACTIVE
+        old_roadmap.is_primary = True
+        old_roadmap.updated_at = tz.now()
+        old_roadmap.save(update_fields=['status', 'is_primary', 'updated_at'])
+        return Response({'detail': f'Roadmap generation failed: {str(e)}'}, status=500)
+
+    return Response(RoadmapSerializer(new_roadmap).data, status=201)

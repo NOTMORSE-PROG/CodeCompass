@@ -25,6 +25,33 @@ from django.contrib.auth.models import AnonymousUser
 
 logger = logging.getLogger('ai_assistant.consumers')
 
+# ---------------------------------------------------------------------------
+# Input pre-screening — blocks obvious jailbreak attempts before calling Groq
+# ---------------------------------------------------------------------------
+_JAILBREAK_RE = re.compile(
+    r'\bignore\b.{0,30}\b(previous|above|all|your)\b.{0,30}\b(instructions?|rules?|prompt|guidelines?)\b'
+    r'|\bforget\b.{0,30}\b(you are|your role|everything|all|previous)\b'
+    r'|\bpretend\b.{0,20}\b(you (are|have no)|there (are|is) no)\b'
+    r'|\byou are now\b'
+    r'|\bact as\b.{0,30}\b(dan|jailbreak|unrestricted|evil|unfiltered|free)\b'
+    r'|\bdan mode\b'
+    r'|\bdeveloper mode\b'
+    r'|\bjailbreak\b'
+    r'|\bno restrictions?\b'
+    r'|\bno (ethical |safety |content )?filters?\b'
+    r'|\bunrestricted (ai|mode|version)\b'
+    r'|\byour (true|real|hidden|actual) (self|purpose|identity|instructions?)\b'
+    r'|\boverride\b.{0,20}\b(safety|filter|restriction|guideline|system)\b'
+    r'|\bbypass\b.{0,20}\b(filter|restriction|safety|content)\b'
+    r'|\bdo anything now\b',
+    re.IGNORECASE,
+)
+
+
+def _check_jailbreak(text: str) -> bool:
+    """Return True if the message matches a known jailbreak pattern."""
+    return bool(_JAILBREAK_RE.search(text[:500]))
+
 
 def _extract_suggestions(text: str):
     """
@@ -37,6 +64,53 @@ def _extract_suggestions(text: str):
     suggestions = [s.strip() for s in match.group(1).split('|') if s.strip()]
     clean = re.sub(r'\s*\[SUGGESTIONS:.*?\]', '', text, flags=re.IGNORECASE).strip()
     return clean, suggestions
+
+
+def _extract_resources(text: str):
+    """
+    Parse [RESOURCES: Title1|url1|Title2|url2] from an AI response.
+    Returns (clean_text, resources_list).
+    Each resource is {'title': str, 'url': str}. Only includes pairs where url starts with 'http'.
+    """
+    match = re.search(r'\[RESOURCES:\s*(.+?)\]', text, re.IGNORECASE)
+    if not match:
+        return text, []
+    parts = [p.strip() for p in match.group(1).split('|') if p.strip()]
+    resources = []
+    for i in range(0, len(parts) - 1, 2):
+        url = parts[i + 1]
+        if url.startswith('http'):
+            resources.append({'title': parts[i], 'url': url})
+    clean = re.sub(r'\s*\[RESOURCES:.*?\]', '', text, flags=re.IGNORECASE).strip()
+    return clean, resources
+
+
+def _extract_roadmap_switch(text: str):
+    """
+    Parse [ROADMAP_SWITCH: {...}] from an AI response.
+    Returns (clean_text, switch_proposal | None).
+    Returns None if tag is missing or invalid.
+    """
+    match = re.search(r'\[ROADMAP_SWITCH:\s*(\{.*?\})\s*\]', text, re.IGNORECASE | re.DOTALL)
+    clean = re.sub(r'\s*\[ROADMAP_SWITCH:.*?\]', '', text, flags=re.IGNORECASE | re.DOTALL).strip()
+    if not match:
+        return clean, None
+    try:
+        proposal = json.loads(match.group(1))
+    except (json.JSONDecodeError, ValueError):
+        return clean, None
+    rid = proposal.get('roadmap_id')
+    new_path = proposal.get('new_path', '').strip()
+    career_goal = proposal.get('career_goal', '').strip()
+    summary = proposal.get('summary', '').strip()
+    if not all([rid, new_path, career_goal, summary]):
+        return clean, None
+    try:
+        if int(str(rid)) <= 0:
+            return clean, None
+    except (ValueError, TypeError):
+        return clean, None
+    return clean, proposal
 
 
 def _extract_edit_proposals(text: str):
@@ -168,6 +242,26 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
         language = data.get('language', 'english')
 
+        # Block jailbreak attempts before any DB write or Groq call
+        if self.chat_session.context_type != 'onboarding' and _check_jailbreak(user_message_text):
+            logger.warning('[WS] Blocked jailbreak attempt: session=%s user=%s', self.session_id, self.user.id)
+            try:
+                await self.send(text_data=json.dumps({
+                    'type': 'stream_end',
+                    'message_id': None,
+                    'clean_content': (
+                        "I'm CodeCompass — your CCS career mentor. I can't help with that, "
+                        "but I'm here for anything about IT careers, learning paths, or tech jobs in the Philippines!"
+                    ),
+                    'suggestions': ['My career options', 'My learning roadmap', 'Job search tips'],
+                    'edit_proposals': None,
+                    'resources': None,
+                    'roadmap_switch': None,
+                }))
+            except Exception:
+                pass
+            return
+
         # Save user message
         await self.save_message('user', user_message_text)
 
@@ -236,21 +330,25 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if stream_failed or not full_response:
             return
 
-        # Strip suggestions and edit proposal tags from saved content
+        # Strip all structured tags from saved content
         clean_response, suggestions = _extract_suggestions(full_response)
         clean_response, edit_proposals = _extract_edit_proposals(clean_response)
+        clean_response, resources = _extract_resources(clean_response)
+        clean_response, roadmap_switch = _extract_roadmap_switch(clean_response)
 
         try:
             # Save clean assistant message
             assistant_msg = await self.save_message('assistant', clean_response)
 
-            # Signal stream complete with suggestions, clean content, and optional edit proposals
+            # Signal stream complete with suggestions, clean content, optional edit proposals, resources, and switch
             await self.send(text_data=json.dumps({
                 'type': 'stream_end',
                 'message_id': assistant_msg.id,
                 'clean_content': clean_response,
                 'suggestions': suggestions,
                 'edit_proposals': edit_proposals if edit_proposals else None,
+                'resources': resources if resources else None,
+                'roadmap_switch': roadmap_switch,
             }))
         except Exception as e:
             logger.exception('[WS] Failed to save/send stream_end for session %s: %s', getattr(self, 'session_id', '?'), e)
@@ -294,6 +392,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
 
         clean_response, suggestions = _extract_suggestions(full_response)
+        clean_response, _ = _extract_edit_proposals(clean_response)
+        clean_response, resources = _extract_resources(clean_response)
+        clean_response, _ = _extract_roadmap_switch(clean_response)
         try:
             greeting_msg = await self.save_message('assistant', clean_response)
             await self.send(text_data=json.dumps({
@@ -301,6 +402,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'message_id': greeting_msg.id,
                 'clean_content': clean_response,
                 'suggestions': suggestions,
+                'resources': resources if resources else None,
+                'roadmap_switch': None,
             }))
         except Exception as e:
             logger.exception('[WS] Failed to save/send greeting stream_end for session %s: %s', getattr(self, 'session_id', '?'), e)
