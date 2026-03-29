@@ -758,3 +758,110 @@ def switch_roadmap(request):
         return Response({'detail': f'Roadmap generation failed: {str(e)}'}, status=500)
 
     return Response(RoadmapSerializer(new_roadmap).data, status=201)
+
+
+_LEVEL_UP = {'beginner': 'intermediate', 'basic': 'intermediate', 'intermediate': 'experienced'}
+
+
+@api_view(['POST'])
+@permission_classes([IsStudent])
+def upskill_roadmap(request):
+    """
+    POST /api/roadmaps/upskill/
+    Archives the current active roadmap and generates a new, more advanced one for the same path.
+    Body: { "roadmap_id": <int> }
+    Rate-limited to one upskill per calendar day (PH timezone).
+    """
+    from apps.ai_assistant.groq_client import generate_roadmap as ai_generate
+    from .generators import save_roadmap_from_ai
+    from django.utils import timezone as tz
+    import zoneinfo
+
+    user = request.user
+    roadmap_id = request.data.get('roadmap_id')
+
+    if not roadmap_id:
+        return Response({'detail': 'roadmap_id is required.'}, status=400)
+
+    # Verify ownership and active status
+    try:
+        old_roadmap = Roadmap.objects.get(pk=roadmap_id, user=user, status=Roadmap.Status.ACTIVE)
+    except Roadmap.DoesNotExist:
+        return Response({'detail': 'Active roadmap not found.'}, status=404)
+
+    # Rate limit: one upskill per calendar day (PH timezone = UTC+8)
+    ph_tz = zoneinfo.ZoneInfo('Asia/Manila')
+    today_ph = tz.now().astimezone(ph_tz).date()
+    if Roadmap.objects.filter(user=user, status=Roadmap.Status.ARCHIVED, updated_at__date=today_ph).exists():
+        return Response(
+            {'detail': 'You can only upskill once per day. Please try again tomorrow.'},
+            status=429,
+        )
+
+    # Validate: at least one certification node must be unlocked (available, in_progress, or completed)
+    if not old_roadmap.nodes.filter(node_type='certification').exclude(status='locked').exists():
+        return Response(
+            {'detail': 'Reach a certification goal in your roadmap before leveling up.'},
+            status=400,
+        )
+
+    # Build updated summary from existing onboarding data
+    try:
+        summary = dict(user.onboarding_session.onboarding_summary or {})
+    except Exception:
+        return Response({'detail': 'Onboarding session not found.'}, status=400)
+
+    # Bump experience level
+    current_level = summary.get('experience_level', 'beginner')
+    summary['experience_level'] = _LEVEL_UP.get(current_level, 'experienced')
+
+    # Build additional_notes from completed certification nodes in the roadmap
+    earned_cert_names = list(
+        old_roadmap.nodes.filter(node_type='certification', status='completed')
+        .values_list('title', flat=True)
+    )
+    if earned_cert_names:
+        summary['additional_notes'] = (
+            f"Student has completed these certification goals: {', '.join(earned_cert_names)}. "
+            f"Do not repeat beginner-level content already covered. "
+            f"Focus on intermediate/advanced topics and real-world projects."
+        )
+    else:
+        summary['additional_notes'] = (
+            f"Student has completed {int(old_roadmap.completion_percentage)}% of their current roadmap. "
+            f"Build on their existing foundation with more advanced topics and projects."
+        )
+
+    # Archive the old roadmap
+    # NOTE: 'updated_at' must be explicitly included — auto_now does NOT fire when using update_fields
+    archive_time = tz.now()
+    old_roadmap.status = Roadmap.Status.ARCHIVED
+    old_roadmap.is_primary = False
+    old_roadmap.updated_at = archive_time
+    old_roadmap.save(update_fields=['status', 'is_primary', 'updated_at'])
+
+    # Clean up any stuck GENERATING roadmaps
+    Roadmap.objects.filter(user=user, status=Roadmap.Status.GENERATING).delete()
+
+    # Create placeholder for new roadmap
+    new_roadmap = Roadmap.objects.create(
+        user=user,
+        title='Generating your advanced roadmap...',
+        career_path='pending',
+        status=Roadmap.Status.GENERATING,
+        is_primary=True,
+    )
+
+    try:
+        ai_data = ai_generate(summary)
+        save_roadmap_from_ai(new_roadmap, ai_data)
+    except Exception as e:
+        new_roadmap.delete()
+        # Restore old roadmap — reset updated_at so the rate-limit counter isn't consumed on failure
+        old_roadmap.status = Roadmap.Status.ACTIVE
+        old_roadmap.is_primary = True
+        old_roadmap.updated_at = archive_time
+        old_roadmap.save(update_fields=['status', 'is_primary', 'updated_at'])
+        return Response({'detail': f'Roadmap generation failed: {str(e)}'}, status=500)
+
+    return Response(RoadmapSerializer(new_roadmap).data, status=201)

@@ -379,6 +379,39 @@ IMPORTANT RULES:
 - Never append this tag in the same message where you are still asking for more information
 """
 
+# Injected when the student has in-progress or completed certification nodes in their roadmap.
+_ROADMAP_UPSKILL_BLOCK = """
+ROADMAP UPSKILLING — AWARENESS + TWO-STEP RULE (follow strictly):
+
+You can see the student's certification node progress in context:
+- "Currently Working On (Certification):" — they are actively pursuing this cert goal
+- "Completed Certification Goals:" — they have finished these cert goals
+
+AWARENESS (when "Currently Working On (Certification):" exists):
+Acknowledge they're working on a cert goal. When they ask about it or mention progress,
+you can say: "Once you finish [cert name], you'll be in a great position for a more
+advanced roadmap!" — but do NOT propose the upskill yet.
+
+TWO-STEP UPSKILL FLOW (when "Completed Certification Goals:" exists and student asks
+what's next, wants to level up, or asks about advancing):
+
+STEP 1 — CONFIRM (no tag yet):
+"You've completed [cert name(s)] in your roadmap — great work! You're ready for more
+advanced [career path] content. Want me to generate a new roadmap that picks up from
+where this one leaves off?"
+Wait for confirmation. Do NOT emit the tag yet.
+
+STEP 2 — PROPOSE (only after student confirms):
+[ROADMAP_UPSKILL: {"roadmap_id": <current_roadmap_id>, "summary": "Advance to intermediate [path] building on completed [cert name(s)]"}]
+
+IMPORTANT RULES:
+- roadmap_id MUST be the exact integer from "Roadmap ID:" in context
+- Same career path, higher level — NOT a path change (use ROADMAP_SWITCH for that)
+- This archives the current roadmap — mention it so the student understands
+- Never emit ROADMAP_UPSKILL and ROADMAP_SWITCH in the same message
+- If the student wants a DIFFERENT career path entirely, use ROADMAP_SWITCH instead
+"""
+
 # ---------------------------------------------------------------------------
 # Restrictions — injected into ALL non-onboarding prompts
 # ---------------------------------------------------------------------------
@@ -529,6 +562,13 @@ def _build_context_block(user_context: dict) -> str:
             for n in full_node_list
         ]
         lines.append('All nodes (id / title / status):\n' + '\n'.join(node_lines))
+
+    completed_certs = user_context.get('completed_cert_nodes', [])
+    active_cert = user_context.get('active_cert_node')
+    if completed_certs:
+        lines.append('Completed Certification Goals: ' + ', '.join(completed_certs))
+    if active_cert:
+        lines.append(f'Currently Working On (Certification): {active_cert}')
 
     lines.append('━━━━━━━━━━━━━━━━━━━━━━')
     lines.append(
@@ -783,6 +823,9 @@ def build_career_mentor_prompt(user_context: dict = None, mode: str = 'general',
     # [ROADMAP_SWITCH: {...}] regardless of which mode the student is currently using.
     if mode in ('general', 'roadmap', 'job') and (user_context or {}).get('roadmap_id'):
         prompt += '\n\n' + _ROADMAP_SWITCH_BLOCK
+        ctx = user_context or {}
+        if ctx.get('completed_cert_nodes') or ctx.get('active_cert_node'):
+            prompt += '\n\n' + _ROADMAP_UPSKILL_BLOCK
 
     # Inject content restrictions into all non-onboarding modes
     prompt += '\n\n' + _RESTRICTIONS_BLOCK

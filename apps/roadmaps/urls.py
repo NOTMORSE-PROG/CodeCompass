@@ -12,6 +12,7 @@ urlpatterns = [
     path('<int:roadmap_pk>/nodes/<int:node_pk>/remove/', views.remove_roadmap_node, name='roadmap-node-remove'),
     path('<int:roadmap_pk>/nodes/<int:node_pk>/fetch-resources/', views.fetch_node_resources, name='node-fetch-resources'),
     path('switch/', views.switch_roadmap, name='roadmap-switch'),
+    path('upskill/', views.upskill_roadmap, name='roadmap-upskill'),
     path('<int:roadmap_pk>/repair/', views.repair_roadmap, name='roadmap-repair'),
     path('<int:roadmap_pk>/fix-structure/', views.fix_structure, name='roadmap-fix-structure'),
     path('<int:roadmap_pk>/nodes/<int:node_pk>/resources/<int:resource_pk>/assessment/',

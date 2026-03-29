@@ -113,6 +113,32 @@ def _extract_roadmap_switch(text: str):
     return clean, proposal
 
 
+def _extract_roadmap_upskill(text: str):
+    """
+    Parse [ROADMAP_UPSKILL: {...}] from an AI response.
+    Returns (clean_text, upskill_proposal | None).
+    Returns None if tag is missing or invalid.
+    """
+    match = re.search(r'\[ROADMAP_UPSKILL:\s*(\{.*?\})\s*\]', text, re.IGNORECASE | re.DOTALL)
+    clean = re.sub(r'\s*\[ROADMAP_UPSKILL:.*?\]', '', text, flags=re.IGNORECASE | re.DOTALL).strip()
+    if not match:
+        return clean, None
+    try:
+        proposal = json.loads(match.group(1))
+    except (json.JSONDecodeError, ValueError):
+        return clean, None
+    rid = proposal.get('roadmap_id')
+    summary = proposal.get('summary', '').strip()
+    if not all([rid, summary]):
+        return clean, None
+    try:
+        if int(str(rid)) <= 0:
+            return clean, None
+    except (ValueError, TypeError):
+        return clean, None
+    return clean, proposal
+
+
 def _extract_edit_proposals(text: str):
     """
     Parse all [ROADMAP_EDIT: {...}] tags from an AI response.
@@ -257,6 +283,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     'edit_proposals': None,
                     'resources': None,
                     'roadmap_switch': None,
+                    'roadmap_upskill': None,
                 }))
             except Exception:
                 pass
@@ -335,12 +362,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
         clean_response, edit_proposals = _extract_edit_proposals(clean_response)
         clean_response, resources = _extract_resources(clean_response)
         clean_response, roadmap_switch = _extract_roadmap_switch(clean_response)
+        clean_response, roadmap_upskill = _extract_roadmap_upskill(clean_response)
 
         try:
             # Save clean assistant message
             assistant_msg = await self.save_message('assistant', clean_response)
 
-            # Signal stream complete with suggestions, clean content, optional edit proposals, resources, and switch
+            # Signal stream complete with suggestions, clean content, optional edit proposals, resources, switch, and upskill
             await self.send(text_data=json.dumps({
                 'type': 'stream_end',
                 'message_id': assistant_msg.id,
@@ -349,6 +377,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'edit_proposals': edit_proposals if edit_proposals else None,
                 'resources': resources if resources else None,
                 'roadmap_switch': roadmap_switch,
+                'roadmap_upskill': roadmap_upskill,
             }))
         except Exception as e:
             logger.exception('[WS] Failed to save/send stream_end for session %s: %s', getattr(self, 'session_id', '?'), e)
@@ -395,6 +424,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         clean_response, _ = _extract_edit_proposals(clean_response)
         clean_response, resources = _extract_resources(clean_response)
         clean_response, _ = _extract_roadmap_switch(clean_response)
+        clean_response, _ = _extract_roadmap_upskill(clean_response)
         try:
             greeting_msg = await self.save_message('assistant', clean_response)
             await self.send(text_data=json.dumps({
@@ -404,6 +434,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'suggestions': suggestions,
                 'resources': resources if resources else None,
                 'roadmap_switch': None,
+                'roadmap_upskill': None,
             }))
         except Exception as e:
             logger.exception('[WS] Failed to save/send greeting stream_end for session %s: %s', getattr(self, 'session_id', '?'), e)
@@ -472,7 +503,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 or Roadmap.objects.filter(user=self.user).order_by('-created_at').first()
             )
             if roadmap:
-                nodes = list(roadmap.nodes.order_by('position_y').values('id', 'title', 'status'))
+                nodes = list(roadmap.nodes.order_by('position_y').values('id', 'title', 'status', 'node_type'))
                 ctx['roadmap_id'] = roadmap.id
                 ctx['roadmap_title'] = roadmap.title
                 ctx['roadmap_path'] = roadmap.career_path
@@ -485,6 +516,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     {'id': n['id'], 'title': n['title'], 'status': n['status']}
                     for n in nodes
                 ]
+                ctx['completed_cert_nodes'] = [
+                    n['title'] for n in nodes
+                    if n['node_type'] == 'certification' and n['status'] == 'completed'
+                ]
+                ctx['active_cert_node'] = next(
+                    (n['title'] for n in nodes if n['node_type'] == 'certification' and n['status'] == 'in_progress'),
+                    None
+                )
         except Exception as e:
             logger.debug('[WS] load_user_context: roadmap unavailable for user %s: %s', self.user.pk, e)
         return ctx
