@@ -471,11 +471,13 @@ def submit_assessment(request, roadmap_pk, node_pk, resource_pk, session_pk):
         is_correct = submitted == q['correct']
         if is_correct:
             correct_count += 1
+        distractors = q.get('distractors', {})
         results.append({
             'correct': is_correct,
             'yourAnswer': submitted,
             'correctAnswer': q['correct'],
             'explanation': q.get('explanation', ''),
+            'distractor': distractors.get(submitted, '') if not is_correct and submitted else '',
         })
 
     total = len(questions)

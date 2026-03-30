@@ -1232,7 +1232,8 @@ STRICT RULES:
 - Exactly 10 questions, Q1 → Q10 in ascending Bloom's level as specified in the staircase above
 - Each question: exactly 4 options (a, b, c, d) — ALL must be plausible, no throwaway answers
 - Vary the correct letter — spread across a, b, c, d; do NOT cluster answers at a or b
-- explanation: exactly 2 sentences — (1) why the correct answer is right, (2) why the most tempting wrong answer is wrong and what misconception it represents
+- explanation: exactly 1 sentence — why the correct answer is right (be specific and factual, reference the exact concept or rule, not a generic statement)
+- distractors: a JSON object with one key per WRONG option letter (every letter except the correct one), each value is 1 factual sentence explaining specifically why that option is wrong — do NOT use "misconception" framing; state the exact factual error in that option
 - No documentation-recall questions (no "what does this API method return?" without context)
 - Code snippets: use the actual language of the topic (Python, JavaScript, Java, SQL, C, etc.)
 - All content in English; no Tagalog in technical questions
@@ -1249,7 +1250,12 @@ Return ONLY a valid JSON array of exactly 10 objects. No markdown. No extra text
       "d": "Fourth option"
     }},
     "correct": "c",
-    "explanation": "C is correct because [specific reason]. [Most tempting wrong letter] is wrong because it reflects the misconception that [specific misconception]."
+    "explanation": "C is correct because [specific factual reason].",
+    "distractors": {
+      "a": "[Specific factual reason why A is wrong].",
+      "b": "[Specific factual reason why B is wrong].",
+      "d": "[Specific factual reason why D is wrong]."
+    }
   }}
 ]
 """
@@ -1511,7 +1517,7 @@ def generate_video_assessment(
         'You are an expert CS education assessor for Filipino university students (CHED-aligned CCS programs). '
         'Return only a valid JSON array of exactly 10 MCQ objects. No markdown, no extra text. '
         'Follow the Bloom\'s staircase strictly — Q1 must be the easiest, Q10 the hardest. '
-        'Every distractor must reflect a documented student misconception, not a random wrong answer. '
+        'For distractors: give one specific factual sentence per wrong option explaining exactly why it is wrong — do not use "misconception" framing, just state the specific factual error in that option. '
         'Respect the program scope — do not generate questions on topics outside the student\'s program.'
     )
     if is_incoming:
