@@ -5,6 +5,9 @@ State universities (SUCs) are covered by RA 10931 (Universal Access to Quality
 Tertiary Education Act) — qualified students pay ₱0; the max shown is the
 non-scholarship / non-resident rate.
 
+Data verified and updated April 2026. Sources: official university websites,
+PAASCU/PACUCOA/AACCUP accreditation records, and CHED announcements.
+
 Usage:
     python manage.py seed_universities
     python manage.py seed_universities --clear   # wipe and re-seed
@@ -101,7 +104,7 @@ UNIVERSITIES = [
         'city': 'Manila',
         'website_url': 'https://www.tup.edu.ph',
         'ched_coe': False,
-        'ched_cod': True,
+        'ched_cod': False,
         'accreditation_level': 2,
         # Free under RA 10931
         'tuition_range_min': 0,
@@ -147,20 +150,21 @@ UNIVERSITIES = [
         'ched_coe': True,
         'ched_cod': False,
         'accreditation_level': 4,
-        # ₱4,175/unit; 20-unit sem ≈ ₱83,500 + fees ~₱90,000
-        'tuition_range_min': 83000,
-        'tuition_range_max': 93000,
+        # ₱4,175/unit; 20-unit sem ≈ ₱83,500 + 3% increase; ~₱82,000–₱95,000/sem
+        'tuition_range_min': 82000,
+        'tuition_range_max': 95000,
         'programs': [
             {
                 'name': 'BS Computer Science',
                 'abbreviation': 'BSCS',
                 'description': (
-                    'Top-ranked CS program in the Philippines. Offers specializations '
-                    'in Software Technology (ST), Network and Internet Security (NIS), '
-                    'and Game Development. CHED Center of Excellence. PAASCU Level 4.'
+                    'One of the top CS programs in the Philippines offered at the '
+                    'College of Computer Studies. Specializations in Software Technology, '
+                    'Network Engineering, and Computer Systems Engineering. '
+                    'CHED Center of Excellence. PAASCU Level 4.'
                 ),
-                'specializations': ['Software Technology', 'Network & Internet Security',
-                                    'Game Development', 'Data Science'],
+                'specializations': ['Software Technology', 'Network Engineering',
+                                    'Computer Systems Engineering'],
                 'duration_years': 4,
                 'has_board_exam': False,
                 'curriculum_url': 'https://www.dlsu.edu.ph/colleges/ccs/undergraduate-degree-programs/',
@@ -190,9 +194,9 @@ UNIVERSITIES = [
         'ched_coe': True,
         'ched_cod': False,
         'accreditation_level': 4,
-        # ₱5,850/unit; 20 units = ₱117,000 + fees ≈ ₱143,000 total
-        'tuition_range_min': 117000,
-        'tuition_range_max': 145000,
+        # ₱5,200/unit × 20 units + ₱16,574 basic fees ≈ ₱120,574 (AY 2025-2026)
+        'tuition_range_min': 104000,
+        'tuition_range_max': 125000,
         'programs': [
             {
                 'name': 'BS Computer Science',
@@ -277,7 +281,7 @@ UNIVERSITIES = [
         'website_url': 'https://www.tip.edu.ph',
         'ched_coe': True,
         'ched_cod': False,
-        'accreditation_level': 3,
+        'accreditation_level': 4,
         # ~₱1,900/unit; 20 units = ₱38,000 + fees ≈ ₱45,000
         'tuition_range_min': 35000,
         'tuition_range_max': 52000,
@@ -286,22 +290,24 @@ UNIVERSITIES = [
                 'name': 'BS Information Technology',
                 'abbreviation': 'BSIT',
                 'description': (
-                    'CHED Center of Excellence in IT Education. ABET-accredited. '
-                    'Covers software development, IT infrastructure, and cybersecurity. '
-                    'Strong industry ties with IBM, Cisco, and Microsoft.'
+                    'CHED Center of Excellence in IT Education. ABET CAC-accredited. '
+                    'PACUCOA Level IV First Reaccredited. Covers software development, '
+                    'IT infrastructure, and cybersecurity. Autonomous CHED status '
+                    '(2024–2027). Strong industry ties with IBM, Cisco, and Microsoft.'
                 ),
                 'specializations': ['Cybersecurity', 'Software Development',
                                     'Cloud Computing', 'Network Administration'],
                 'duration_years': 4,
                 'has_board_exam': False,
-                'curriculum_url': 'https://tip.edu.ph/assets/generic-pages/downloadables/BSIT-RE18-Curriculum.pdf',
+                'curriculum_url': 'https://tip.edu.ph/what-we-offer/undergraduate-programs/tip-manila/college-of-computer-studies/information-technology/',
             },
             {
                 'name': 'BS Computer Science',
                 'abbreviation': 'BSCS',
                 'description': (
-                    'Prepares students for research and industry roles in software '
-                    'systems, AI, and data engineering.'
+                    'ABET CAC-accredited. PACUCOA Level III. Prepares students for '
+                    'research and industry roles in software systems, AI, and data '
+                    'engineering. Offered at the College of Computer Studies.'
                 ),
                 'specializations': ['Artificial Intelligence', 'Software Systems'],
                 'duration_years': 4,
@@ -333,7 +339,7 @@ UNIVERSITIES = [
         'ched_coe': True,
         'ched_cod': False,
         'accreditation_level': 3,
-        # Trimester system; ₱50,000–₱68,000/trimester (3 terms/year)
+        # Trimester system (3 terms/year starting AY 2024-2025); ₱50,000–₱68,000/trimester
         'tuition_range_min': 50000,
         'tuition_range_max': 68000,
         'programs': [
@@ -341,15 +347,15 @@ UNIVERSITIES = [
                 'name': 'BS Computer Science',
                 'abbreviation': 'BSCS',
                 'description': (
-                    'Offered under the School of Computing and Information Technologies. '
+                    'Offered under the School of Information Technology (SoIT). '
                     'Specializations in AI, cybersecurity, and data science. '
-                    'CHED Center of Excellence. QS-ranked university.'
+                    'CHED Center of Development. PACUCOA Level III. QS-ranked university.'
                 ),
                 'specializations': ['Artificial Intelligence', 'Cybersecurity',
                                     'Data Science', 'Software Engineering'],
                 'duration_years': 4,
                 'has_board_exam': False,
-                'curriculum_url': 'https://www.mapua.edu.ph/pages/academics/undergraduate/makati-campus/school-of-computing-and-information-technologies/bachelor-of-science-in-computer-science',
+                'curriculum_url': 'https://www.mapua.edu.ph/pages/academics/undergraduate/makati-campus/school-of-information-technology/bachelor-of-science-in-computer-science',
             },
             {
                 'name': 'BS Information Technology',
@@ -389,7 +395,7 @@ UNIVERSITIES = [
         'website_url': 'https://www.ama.edu.ph',
         'ched_coe': False,
         'ched_cod': False,
-        'accreditation_level': 1,
+        'accreditation_level': 4,
         # ~₱1,300/unit; 20 units ≈ ₱26,000/sem
         'tuition_range_min': 22000,
         'tuition_range_max': 35000,
@@ -398,8 +404,10 @@ UNIVERSITIES = [
                 'name': 'BS Information Technology',
                 'abbreviation': 'BSIT',
                 'description': (
-                    'Widely accessible IT program with campuses across the Philippines. '
-                    'Focuses on application development, networking, and IT support.'
+                    'PACUCOA Level IV accredited. ABET CAC-accredited. '
+                    'Pioneering IT program from one of the Philippines\' first '
+                    'tech-focused universities. Covers application development, '
+                    'networking, and IT support across multiple campuses nationwide.'
                 ),
                 'specializations': ['Application Development', 'Networking',
                                     'IT Support'],
@@ -411,6 +419,7 @@ UNIVERSITIES = [
                 'name': 'BS Computer Science',
                 'abbreviation': 'BSCS',
                 'description': (
+                    'PACUCOA Level IV accredited. ABET CAC-accredited. '
                     'Covers programming fundamentals, data structures, '
                     'database management, and software development lifecycle.'
                 ),
@@ -431,7 +440,7 @@ UNIVERSITIES = [
         'website_url': 'https://www.ust.edu.ph',
         'ched_coe': False,
         'ched_cod': True,
-        'accreditation_level': 3,
+        'accreditation_level': 2,
         # ₱53,860–₱79,343/sem depending on college/year level
         'tuition_range_min': 54000,
         'tuition_range_max': 80000,
@@ -441,14 +450,15 @@ UNIVERSITIES = [
                 'abbreviation': 'BSIT',
                 'description': (
                     'Offered at the College of Information and Computing Sciences. '
-                    'Covers web and mobile development, human-computer interaction, '
-                    'and network management. CHED Center of Development.'
+                    'PAASCU Level II Re-Accredited. Three specialization tracks: '
+                    'Network & Security, IT Automation, and Web & Mobile App Dev. '
+                    'CHED Center of Development.'
                 ),
-                'specializations': ['Web & Mobile Development',
-                                    'Human-Computer Interaction', 'Network Management'],
+                'specializations': ['Network & Security', 'IT Automation',
+                                    'Web & Mobile Application Development'],
                 'duration_years': 4,
                 'has_board_exam': False,
-                'curriculum_url': 'https://www.ust.edu.ph/academics/colleges/college-of-information-and-computing-sciences/',
+                'curriculum_url': 'https://www.ust.edu.ph/information-and-computing-sciences/department-of-information-technology/',
             },
             {
                 'name': 'BS Information Systems',
@@ -461,7 +471,7 @@ UNIVERSITIES = [
                                     'Digital Transformation'],
                 'duration_years': 4,
                 'has_board_exam': False,
-                'curriculum_url': 'https://www.ust.edu.ph/academics/colleges/college-of-information-and-computing-sciences/',
+                'curriculum_url': 'https://www.ust.edu.ph/information-and-computing-sciences/',
             },
         ],
     },
@@ -657,38 +667,38 @@ UNIVERSITIES = [
         'website_url': 'https://manila.lpu.edu.ph',
         'ched_coe': False,
         'ched_cod': False,
-        'accreditation_level': 2,
-        # BSIT/BSCS: ~₱64,128/sem for 20 units (AY 2025-2026, no tuition increase)
-        'tuition_range_min': 60000,
-        'tuition_range_max': 68000,
+        'accreditation_level': 3,
+        # BSIT 17 units = ₱54,435.80 confirmed AY 2025-2026; BSCS similar range
+        'tuition_range_min': 50000,
+        'tuition_range_max': 58000,
         'programs': [
             {
                 'name': 'BS Information Technology',
                 'abbreviation': 'BSIT',
                 'description': (
-                    'Located in Intramuros, Manila. Total semestral fee ~₱64,128 '
-                    'for 20 units (AY 2025-2026 — no tuition increase confirmed). '
-                    'Covers web/mobile development, cloud, and IT project management. '
+                    'PACUCOA Level III accredited. Located in Intramuros, Manila. '
+                    'Offered at the College of Technology (COT). Covers web/mobile '
+                    'development, cloud, and IT project management. '
                     'Strong OJT program with industry partners.'
                 ),
                 'specializations': ['Web & Mobile Development', 'Cloud Computing',
                                     'IT Project Management'],
                 'duration_years': 4,
                 'has_board_exam': False,
-                'curriculum_url': 'https://manila.lpu.edu.ph/admissions/program-offerings/',
+                'curriculum_url': 'https://manila.lpu.edu.ph/academics/technology/cot-program-offerings/',
             },
             {
                 'name': 'BS Computer Science',
                 'abbreviation': 'BSCS',
                 'description': (
-                    'Covers core computing fundamentals, software systems, '
-                    'and data engineering. Offered at LPU\'s main Manila campus '
-                    'in Intramuros.'
+                    'PACUCOA Level III accredited. Covers core computing fundamentals, '
+                    'software systems, and data engineering. Offered at the College of '
+                    'Technology (COT) at LPU\'s main Manila campus in Intramuros.'
                 ),
                 'specializations': ['Software Systems', 'Data Engineering'],
                 'duration_years': 4,
                 'has_board_exam': False,
-                'curriculum_url': 'https://manila.lpu.edu.ph/admissions/program-offerings/',
+                'curriculum_url': 'https://manila.lpu.edu.ph/academics/technology/cot-program-offerings/',
             },
         ],
     },
@@ -853,8 +863,8 @@ UNIVERSITIES = [
         'city': 'Angeles City',
         'website_url': 'https://www.hau.edu.ph',
         'ched_coe': False,
-        'ched_cod': False,
-        'accreditation_level': 2,
+        'ched_cod': True,
+        'accreditation_level': 3,
         # ~₱1,600/unit; 20 units ≈ ₱32,000/sem + fees
         'tuition_range_min': 28000,
         'tuition_range_max': 42000,
@@ -863,25 +873,27 @@ UNIVERSITIES = [
                 'name': 'BS Computer Science',
                 'abbreviation': 'BSCS',
                 'description': (
-                    'One of the top private universities in Central Luzon. '
-                    'Covers software engineering, algorithms, and data science.'
+                    'CHED Center of Development for IT Education in Region III. '
+                    'AUN-QA certified (2023). Covers software engineering, algorithms, '
+                    'and data science at the School of Computing.'
                 ),
                 'specializations': ['Software Engineering', 'Data Analytics'],
                 'duration_years': 4,
                 'has_board_exam': False,
-                'curriculum_url': 'https://www.hau.edu.ph/colleges/ccs',
+                'curriculum_url': 'https://www.hau.edu.ph/academics/school-of-computing',
             },
             {
                 'name': 'BS Information Technology',
                 'abbreviation': 'BSIT',
                 'description': (
+                    'PAASCU Level III accredited. AUN-QA certified (2021). CHED CoD. '
                     'Practical IT curriculum with strong industry exposure through '
                     'internship programs and tech company tie-ups in Clark Freeport Zone.'
                 ),
                 'specializations': ['Web Development', 'IT Infrastructure'],
                 'duration_years': 4,
                 'has_board_exam': False,
-                'curriculum_url': 'https://www.hau.edu.ph/colleges/ccs',
+                'curriculum_url': 'https://www.hau.edu.ph/academics/school-of-computing',
             },
         ],
     },
@@ -896,8 +908,8 @@ UNIVERSITIES = [
         'province': 'Laguna',
         'city': 'Los Baños',
         'website_url': 'https://uplb.edu.ph',
-        'ched_coe': False,
-        'ched_cod': True,
+        'ched_coe': True,
+        'ched_cod': False,
         'accreditation_level': 3,
         # Free under RA 10931; same ₱1,500/unit socialized rate as UP System
         'tuition_range_min': 0,
@@ -909,7 +921,7 @@ UNIVERSITIES = [
                 'description': (
                     'Offered at the Institute of Computer Science, UPLB. '
                     'Strong research culture in scientific computing, bioinformatics, '
-                    'and AI. CHED Center of Development.'
+                    'and AI. CHED Center of Excellence.'
                 ),
                 'specializations': ['Scientific Computing', 'Bioinformatics',
                                     'Artificial Intelligence', 'Computational Biology'],
@@ -967,7 +979,7 @@ UNIVERSITIES = [
         'region': 'Region IV-A',
         'province': 'Batangas',
         'city': 'Batangas City',
-        'website_url': 'https://www.batstateu.edu.ph',
+        'website_url': 'https://batstateu.edu.ph',
         'ched_coe': False,
         'ched_cod': False,
         'accreditation_level': 2,
@@ -979,27 +991,29 @@ UNIVERSITIES = [
                 'name': 'BS Information Technology',
                 'abbreviation': 'BSIT',
                 'description': (
-                    'Free IT program at one of CALABARZON\'s largest state universities. '
-                    'BSIT curriculum (2023-2024) covers web systems, networking, '
-                    'database management, and IT project management. Multiple campuses '
-                    'across Batangas province.'
+                    'The National Engineering University (RA 11694, 2022). '
+                    'ABET CAC-accredited — first state university in the Philippines '
+                    'with ABET-accredited computing programs. Three official tracks: '
+                    'Network Technology, Business Analytics, and Service Management.'
                 ),
-                'specializations': ['Web Systems', 'Networking', 'Database Management'],
+                'specializations': ['Network Technology', 'Business Analytics',
+                                    'Service Management'],
                 'duration_years': 4,
                 'has_board_exam': False,
-                'curriculum_url': 'https://batstateu.edu.ph/wp-content/uploads/2025/03/BSIT-Curriculum-2023-2024.pdf',
+                'curriculum_url': 'https://batstateu.edu.ph/programs/informatics-and-computing-sciences/',
             },
             {
                 'name': 'BS Computer Science',
                 'abbreviation': 'BSCS',
                 'description': (
-                    'Covers CS fundamentals including algorithms, data structures, '
-                    'software engineering, and applied computing.'
+                    'ABET CAC-accredited. Part of BatStateU — The National Engineering '
+                    'University. Covers CS fundamentals including algorithms, data '
+                    'structures, software engineering, and applied computing.'
                 ),
                 'specializations': [],
                 'duration_years': 4,
                 'has_board_exam': False,
-                'curriculum_url': 'https://batstateu.edu.ph/academics/programs',
+                'curriculum_url': 'https://batstateu.edu.ph/bachelor-of-science-in-computer-science-bscs/',
             },
         ],
     },
@@ -1078,13 +1092,13 @@ UNIVERSITIES = [
                 'name': 'BS Computer Science',
                 'abbreviation': 'BSCS',
                 'description': (
-                    'Fundamental CS program covering algorithms, programming, '
-                    'and computing systems.'
+                    'Offered at the College of Science (CSIT department). '
+                    'Covers fundamental CS — algorithms, programming, and computing systems.'
                 ),
                 'specializations': [],
                 'duration_years': 4,
                 'has_board_exam': False,
-                'curriculum_url': 'https://www.bicol-u.edu.ph/colleges/cict',
+                'curriculum_url': 'https://bicol-u.edu.ph/category/college-of-science/',
             },
         ],
     },
@@ -1110,21 +1124,10 @@ UNIVERSITIES = [
                 'abbreviation': 'BSIT',
                 'description': (
                     'Affordable state university IT program for Western Visayas. '
-                    'Covers web technologies, database systems, and IT management.'
+                    'Covers web technologies, database systems, and IT management. '
+                    'Offered at the Institute of Information and Communications Technology.'
                 ),
                 'specializations': ['Web Technologies', 'Database Systems'],
-                'duration_years': 4,
-                'has_board_exam': False,
-                'curriculum_url': 'https://www.wvsu.edu.ph/academics/programs',
-            },
-            {
-                'name': 'BS Computer Science',
-                'abbreviation': 'BSCS',
-                'description': (
-                    'Theoretical CS program covering programming, data structures, '
-                    'and software engineering.'
-                ),
-                'specializations': [],
                 'duration_years': 4,
                 'has_board_exam': False,
                 'curriculum_url': 'https://www.wvsu.edu.ph/academics/programs',
@@ -1142,8 +1145,8 @@ UNIVERSITIES = [
         'province': 'Cebu',
         'city': 'Cebu City',
         'website_url': 'https://www.cit.edu',
-        'ched_coe': False,
-        'ched_cod': True,
+        'ched_coe': True,
+        'ched_cod': False,
         'accreditation_level': 3,
         # ~₱1,700/unit; ≈ ₱34,000/sem + fees; 2024-2025 tuition increase approved
         'tuition_range_min': 30000,
@@ -1153,9 +1156,10 @@ UNIVERSITIES = [
                 'name': 'BS Computer Science',
                 'abbreviation': 'BSCS',
                 'description': (
-                    'CHED Center of Development. Leading CS program in Visayas. '
+                    'CHED Center of Excellence. Leading CS program in Visayas. '
                     'Covers algorithms, data science, and software systems. '
-                    'Strong industry ties in the Cebu IT-BPM corridor.'
+                    'Strong industry ties in the Cebu IT-BPM corridor. '
+                    '11-time PACUCOA awardee for highest number of accredited programs in Region VII.'
                 ),
                 'specializations': ['Data Science', 'Software Systems',
                                     'AI & Machine Learning'],
@@ -1245,36 +1249,38 @@ UNIVERSITIES = [
         'city': 'Dumaguete City',
         'website_url': 'https://www.su.edu.ph',
         'ched_coe': False,
-        'ched_cod': False,
+        'ched_cod': True,
         'accreditation_level': 3,
-        # ₱30,000–₱60,000/sem (2025-2026 rates)
-        'tuition_range_min': 30000,
-        'tuition_range_max': 60000,
+        # ~8% increase AY 2024-2025; estimated ₱33,000–₱65,000/sem for 2025-2026
+        'tuition_range_min': 33000,
+        'tuition_range_max': 65000,
         'programs': [
             {
                 'name': 'BS Computer Science',
                 'abbreviation': 'BSCS',
                 'description': (
-                    'Offered at the College of Computer Studies, Silliman University — '
-                    'the first Protestant university in the Philippines and Southeast Asia. '
-                    'Strong liberal arts integration with computing fundamentals.'
+                    'CHED Center of Development. Offered at the College of Computer '
+                    'Studies, Silliman University — the first Protestant university '
+                    'in the Philippines and Southeast Asia. PAASCU re-accredited until '
+                    '2027. Strong liberal arts integration with computing fundamentals.'
                 ),
                 'specializations': ['Software Development', 'Data Analytics'],
                 'duration_years': 4,
                 'has_board_exam': False,
-                'curriculum_url': 'https://www.su.edu.ph/colleges/college-of-computer-studies/',
+                'curriculum_url': 'https://su.edu.ph/schools-colleges/college-of-computer-studies/',
             },
             {
                 'name': 'BS Information Technology',
                 'abbreviation': 'BSIT',
                 'description': (
+                    'CHED Center of Development. PAASCU re-accredited until 2027. '
                     'Prepares students for IT careers with a focus on systems '
                     'development, networking, and digital media.'
                 ),
                 'specializations': ['Systems Development', 'Digital Media'],
                 'duration_years': 4,
                 'has_board_exam': False,
-                'curriculum_url': 'https://www.su.edu.ph/colleges/college-of-computer-studies/',
+                'curriculum_url': 'https://su.edu.ph/schools-colleges/college-of-computer-studies/',
             },
         ],
     },
@@ -1375,8 +1381,8 @@ UNIVERSITIES = [
         'province': 'Lanao del Norte',
         'city': 'Iligan City',
         'website_url': 'https://www.msuiit.edu.ph',
-        'ched_coe': True,
-        'ched_cod': False,
+        'ched_coe': False,
+        'ched_cod': True,
         'accreditation_level': 4,
         # Free under RA 10931; otherwise ₱3,500–₱9,000/sem
         'tuition_range_min': 0,
@@ -1386,9 +1392,10 @@ UNIVERSITIES = [
                 'name': 'BS Computer Science',
                 'abbreviation': 'BSCS',
                 'description': (
-                    'CHED Center of Excellence — the premier CS program in Mindanao. '
-                    'Strong in algorithms, AI/ML, operating systems, and systems '
-                    'programming. Offered at the College of Computer Studies.'
+                    'CHED Center of Development — the premier CS program in Mindanao. '
+                    'AACCUP Level IV accredited (all programs). Strong in algorithms, '
+                    'AI/ML, operating systems, and systems programming. '
+                    'Offered at the College of Computer Studies.'
                 ),
                 'specializations': ['Artificial Intelligence', 'Systems Programming',
                                     'Theory of Computation', 'Machine Learning'],
@@ -1468,23 +1475,23 @@ UNIVERSITIES = [
         'ched_coe': False,
         'ched_cod': False,
         'accreditation_level': 3,
-        # ~₱2,500/unit; 20 units ≈ ₱50,000/sem + fees
-        'tuition_range_min': 45000,
-        'tuition_range_max': 65000,
+        # 4% increase approved AY 2025-2026; ~₱48,000–₱68,000/sem
+        'tuition_range_min': 48000,
+        'tuition_range_max': 68000,
         'programs': [
             {
                 'name': 'BS Computer Science',
                 'abbreviation': 'BSCS',
                 'description': (
-                    'Jesuit-run university offering CS in one of the safest cities '
-                    'in Southeast Asia. Covers algorithms, data analytics, and '
-                    'human-computer interaction.'
+                    'PAASCU Level III accredited. Jesuit-run university offering CS '
+                    'in one of the safest cities in Southeast Asia. Covers algorithms, '
+                    'data analytics, and human-computer interaction.'
                 ),
                 'specializations': ['Data Analytics', 'Human-Computer Interaction',
                                     'Software Development'],
                 'duration_years': 4,
                 'has_board_exam': False,
-                'curriculum_url': 'https://www.addu.edu.ph/school-of-engineering-and-architecture/',
+                'curriculum_url': 'https://www.addu.edu.ph/computer-science/',
             },
             {
                 'name': 'BS Information Technology',
@@ -1496,7 +1503,7 @@ UNIVERSITIES = [
                 'specializations': ['Web & Mobile Development', 'IT Infrastructure'],
                 'duration_years': 4,
                 'has_board_exam': False,
-                'curriculum_url': 'https://www.addu.edu.ph/school-of-engineering-and-architecture/',
+                'curriculum_url': 'https://www.addu.edu.ph/information-technology/',
             },
         ],
     },
@@ -1507,10 +1514,10 @@ UNIVERSITIES = [
         'region': 'Region XI',
         'province': 'Davao del Sur',
         'city': 'Davao City',
-        'website_url': 'https://www.umindanao.edu.ph',
+        'website_url': 'https://umindanao.edu.ph',
         'ched_coe': False,
-        'ched_cod': False,
-        'accreditation_level': 2,
+        'ched_cod': True,
+        'accreditation_level': 4,
         # ~₱1,200/unit; 20 units ≈ ₱24,000/sem + fees
         'tuition_range_min': 20000,
         'tuition_range_max': 32000,
@@ -1519,26 +1526,28 @@ UNIVERSITIES = [
                 'name': 'BS Information Technology',
                 'abbreviation': 'BSIT',
                 'description': (
-                    'One of the largest private universities in Mindanao. '
-                    'Affordable IT program covering software development, '
-                    'networking, and IT service management.'
+                    'PACUCOA Level IV accredited. CHED Center of Development. '
+                    'PICAB-accredited. One of the largest private universities in '
+                    'Mindanao. Offered at the College of Computing Education (CCE). '
+                    'Covers software development, networking, and IT service management.'
                 ),
                 'specializations': ['Software Development', 'Networking'],
                 'duration_years': 4,
                 'has_board_exam': False,
-                'curriculum_url': 'https://www.umindanao.edu.ph/colleges/college-of-computing-education',
+                'curriculum_url': 'https://umindanao.edu.ph/colleges/cce',
             },
             {
                 'name': 'BS Computer Science',
                 'abbreviation': 'BSCS',
                 'description': (
+                    'PACUCOA Level IV accredited. CHED Center of Development. '
                     'Covers core CS fundamentals — programming, data structures, '
-                    'algorithms, and software engineering.'
+                    'algorithms, and software engineering. Offered at the CCE.'
                 ),
                 'specializations': [],
                 'duration_years': 4,
                 'has_board_exam': False,
-                'curriculum_url': 'https://www.umindanao.edu.ph/colleges/college-of-computing-education',
+                'curriculum_url': 'https://umindanao.edu.ph/colleges/cce',
             },
         ],
     },
@@ -1555,7 +1564,7 @@ UNIVERSITIES = [
         'website_url': 'https://www.bsu.edu.ph',
         'ched_coe': False,
         'ched_cod': False,
-        'accreditation_level': 2,
+        'accreditation_level': 3,
         'tuition_range_min': 0,
         'tuition_range_max': 5000,
         'programs': [
@@ -1577,7 +1586,7 @@ UNIVERSITIES = [
 
 
 class Command(BaseCommand):
-    help = 'Seed Philippine universities and their CCS programs (AY 2025-2026 data).'
+    help = 'Seed Philippine universities and their CCS programs (data verified April 2026).'
 
     def add_arguments(self, parser):
         parser.add_argument(

@@ -1,14 +1,22 @@
 from rest_framework import generics, permissions
 from rest_framework.filters import SearchFilter
+from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Certification, UserCertification
 from .serializers import CertificationSerializer, UserCertificationSerializer
+
+
+class CertificationPagination(PageNumberPagination):
+    page_size = 10
+    page_size_query_param = 'page_size'
+    max_page_size = 500
 
 
 class CertificationListView(generics.ListAPIView):
     """GET /api/certifications/ — Browse all certifications."""
     serializer_class = CertificationSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = CertificationPagination
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ['provider', 'level', 'track', 'is_free']
     search_fields = ['name', 'abbreviation', 'description']
