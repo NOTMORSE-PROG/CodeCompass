@@ -598,56 +598,59 @@ def edit_node_content(request, roadmap_pk, node_pk):
     return Response(RoadmapNodeSerializer(node).data)
 
 
-@api_view(['POST'])
+@api_view(['PATCH'])
 @permission_classes([permissions.IsAuthenticated])
-def add_roadmap_node(request, roadmap_pk):
+def replace_roadmap_node(request, roadmap_pk, node_pk):
     """
-    POST /api/roadmaps/{id}/nodes/add/
-    Insert a new node into the roadmap. New nodes are locked by default.
-    Optionally set parent_node to after_node_id for ordering context.
+    PATCH /api/roadmaps/{id}/nodes/{nid}/replace/
+    Replace the content of a node in-place (title, description, node_type,
+    estimated_hours, difficulty). Resets node progress to LOCKED.
+    Limited to once per calendar day per user (Asia/Manila timezone).
     """
-    roadmap = get_object_or_404(Roadmap, pk=roadmap_pk, user=request.user)
-    last_order = roadmap.nodes.aggregate(m=models.Max('node_order'))['m'] or 0
-    node = RoadmapNode.objects.create(
-        roadmap=roadmap,
-        title=request.data.get('title', 'New Node'),
-        description=request.data.get('description', ''),
-        node_type=_coerce_node_type(request.data.get('node_type')),
-        estimated_hours=_to_int(request.data.get('estimated_hours'), default=5, min_val=1),
-        difficulty=_to_int(request.data.get('difficulty'), default=2, min_val=1, max_val=5),
-        status=RoadmapNode.Status.LOCKED,
-        node_order=last_order + 1,
-    )
-    after_id = request.data.get('after_node_id')
-    if after_id:
-        try:
-            anchor = roadmap.nodes.get(pk=after_id)
-            node.parent_node = anchor
-            node.save(update_fields=['parent_node'])
-        except RoadmapNode.DoesNotExist:
-            pass
-    roadmap.recalculate_completion()
-    return Response(RoadmapNodeSerializer(node).data, status=status.HTTP_201_CREATED)
-
-
-@api_view(['DELETE'])
-@permission_classes([permissions.IsAuthenticated])
-def remove_roadmap_node(request, roadmap_pk, node_pk):
-    """
-    DELETE /api/roadmaps/{id}/nodes/{nid}/remove/
-    Remove a node from the roadmap and recalculate completion %.
-    """
+    import zoneinfo
+    user = request.user
     node = get_object_or_404(
-        RoadmapNode, pk=node_pk, roadmap__pk=roadmap_pk, roadmap__user=request.user
+        RoadmapNode, pk=node_pk, roadmap__pk=roadmap_pk, roadmap__user=user
     )
-    if node.node_type == 'milestone':
-        return Response({'detail': 'Cannot remove phase milestone nodes.'}, status=status.HTTP_400_BAD_REQUEST)
-    if node.status == 'completed':
-        return Response({'detail': 'Cannot remove a completed node.'}, status=status.HTTP_400_BAD_REQUEST)
-    node.delete()
-    roadmap = Roadmap.objects.get(pk=roadmap_pk)
-    roadmap.recalculate_completion()
-    return Response(status=status.HTTP_204_NO_CONTENT)
+    if node.node_type == RoadmapNode.NodeType.MILESTONE:
+        return Response({'detail': 'Cannot replace phase milestone nodes.'}, status=status.HTTP_400_BAD_REQUEST)
+    if node.status == RoadmapNode.Status.COMPLETED:
+        return Response({'detail': 'Cannot replace a completed node.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Rate limit: one replace per calendar day (PH timezone = UTC+8)
+    ph_tz = zoneinfo.ZoneInfo('Asia/Manila')
+    today_ph = timezone.now().astimezone(ph_tz).date()
+    already_replaced_today = RoadmapNode.objects.filter(
+        roadmap__user=user,
+        last_replaced_at__date=today_ph,
+    ).exists()
+    if already_replaced_today:
+        return Response(
+            {'detail': 'You can only replace a roadmap node once per day. Please try again tomorrow.'},
+            status=429,
+        )
+
+    COERCE_INT = {
+        'estimated_hours': lambda v: _to_int(v, default=node.estimated_hours, min_val=1),
+        'difficulty':      lambda v: _to_int(v, default=node.difficulty, min_val=1, max_val=5),
+    }
+    allowed = {'title', 'description', 'node_type', 'estimated_hours', 'difficulty'}
+    for field in allowed & set(request.data.keys()):
+        val = request.data[field]
+        if field == 'node_type':
+            setattr(node, field, _coerce_node_type(val))
+        else:
+            setattr(node, field, COERCE_INT[field](val) if field in COERCE_INT else val)
+
+    node.status = RoadmapNode.Status.LOCKED
+    node.completed_at = None
+    node.last_replaced_at = timezone.now()
+    node.save(update_fields=[
+        'title', 'description', 'node_type', 'estimated_hours', 'difficulty',
+        'status', 'completed_at', 'last_replaced_at',
+    ])
+    node.roadmap.recalculate_completion()
+    return Response(RoadmapNodeSerializer(node).data)
 
 
 @api_view(['POST'])

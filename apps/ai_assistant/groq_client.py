@@ -325,22 +325,35 @@ Do NOT append a [ROADMAP_EDIT] tag in this message. Do NOT guess or propose valu
 Example triggers that require clarification first: "I want to change something", "can you update that node",
 "this doesn't feel right" → ask what specifically they want the new title/description/etc. to be.
 
+IMPORTANT — ONLY ONE STRUCTURAL ACTION EXISTS: replace_node
+If the student asks to ADD a node, DELETE a node, or REPLACE a node, the answer is always replace_node.
+There is no add and no delete. Explain this to the student naturally:
+- "add a node" → tell them the only option is to replace an existing node with new content; ask which node to replace and what the new content should be.
+- "delete/remove a node" → tell them deletion is not supported; the only option is to replace that node with something more useful; ask what they'd like it to become instead.
+- "replace a node" → proceed normally with replace_node.
+
 STEP 2 — PROPOSE (append tag(s) only when you have the exact new values):
 Once the student provides the specific change(s), respond with your normal text AND append
 ONE OR MORE [ROADMAP_EDIT: {...}] tags at the very end — one per action, in the order they should be applied.
-Example: rename a node AND add a new one → append two tags back-to-back.
 
 Tag format (one per action):
 [ROADMAP_EDIT: {"action": "edit_node", "roadmap_id": <id>, "node_id": <id>, "changes": {"title": "...", "description": "..."}, "summary": "Short description of the change"}]
 
 Actions:
-- "edit_node"    → change title/description/estimated_hours/difficulty of an existing node (requires node_id)
-- "edit_roadmap" → change roadmap title/description/estimated_weeks (omit node_id)
-- "add_node"     → add a new node (omit node_id; put title/description/node_type/estimated_hours/difficulty in changes; include after_node_id in changes)
-                   VALID node_type values ONLY: "skill" (learning topic), "assessment" (self-check), "project" (hands-on build), "certification" (credential goal)
-                   Always set after_node_id to the ID of the last node in the target phase (from "All nodes") — this ensures the node lands in the right phase, not appended to the end of the roadmap
-                   difficulty must be an integer 1–5
-- "remove_node"  → delete a node (requires node_id; no changes key needed)
+- "edit_node"     → change title/description/estimated_hours/difficulty of an existing node (requires node_id)
+- "edit_roadmap"  → change roadmap title/description/estimated_weeks (omit node_id)
+- "replace_node"  → fully replace an existing node in-place with new content (requires node_id; put any of
+                    title/description/node_type/estimated_hours/difficulty in changes)
+                    VALID node_type values ONLY: "skill", "assessment", "project", "certification"
+                    difficulty must be an integer 1–5
+                    HARD RULES — never propose replace_node if either condition is true:
+                      • node_type is "milestone" → tell the student milestone nodes mark phase boundaries
+                        and cannot be changed. Suggest editing a nearby skill node instead.
+                      • status is "completed" → tell the student completed nodes are locked to preserve
+                        their achievement. Suggest replacing a different node or editing it with edit_node.
+                    ONCE-PER-DAY LIMIT — mention this during your GATHER step (before proposing), not after.
+                    Say something like: "Just so you know, replacing a node uses your one daily allowance —
+                    are you sure you want to use it on this node?" Then proceed to gather the new content.
 
 Use the node IDs from the "All nodes" list in your context. If you are unsure of a node ID, ask the student to clarify.
 NEVER append any tag in the same message where you are still asking for missing information.
@@ -558,10 +571,10 @@ def _build_context_block(user_context: dict) -> str:
         lines.append(f'Roadmap ID: {roadmap_id}')
     if full_node_list:
         node_lines = [
-            f"  [{n['id']}] {n['title']} ({n['status']})"
+            f"  [{n['id']}] {n['title']} (status: {n['status']}, type: {n['node_type']})"
             for n in full_node_list
         ]
-        lines.append('All nodes (id / title / status):\n' + '\n'.join(node_lines))
+        lines.append('All nodes (id / title / status / type):\n' + '\n'.join(node_lines))
 
     completed_certs = user_context.get('completed_cert_nodes', [])
     active_cert = user_context.get('active_cert_node')

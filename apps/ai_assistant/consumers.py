@@ -159,7 +159,7 @@ def _extract_edit_proposals(text: str):
     return clean, valid
 
 
-_ALLOWED_ACTIONS = {'edit_node', 'edit_roadmap', 'add_node', 'remove_node'}
+_ALLOWED_ACTIONS = {'edit_node', 'edit_roadmap', 'replace_node'}
 
 
 def _is_valid_proposal(proposal: dict) -> bool:
@@ -181,12 +181,12 @@ def _is_valid_proposal(proposal: dict) -> bool:
     if _is_placeholder(rid) or not str(rid).lstrip('-').isdigit() or int(str(rid)) <= 0:
         return False
 
-    if action in ('edit_node', 'remove_node'):
+    if action in ('edit_node', 'replace_node'):
         nid = proposal.get('node_id')
         if _is_placeholder(nid) or not str(nid).lstrip('-').isdigit() or int(str(nid)) <= 0:
             return False
 
-    if action in ('edit_node', 'edit_roadmap', 'add_node'):
+    if action in ('edit_node', 'edit_roadmap', 'replace_node'):
         changes = proposal.get('changes')
         if not isinstance(changes, dict) or not changes:
             return False

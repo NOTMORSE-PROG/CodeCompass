@@ -73,6 +73,7 @@ class RoadmapNode(models.Model):
     status = models.CharField(max_length=15, choices=Status.choices, default=Status.LOCKED)
     xp_reward = models.PositiveSmallIntegerField(default=50)
     completed_at = models.DateTimeField(null=True, blank=True)
+    last_replaced_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['node_order']
