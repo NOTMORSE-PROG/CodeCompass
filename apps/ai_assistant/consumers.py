@@ -517,7 +517,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                     (n['title'] for n in nodes if n['status'] == 'in_progress'), None
                 )
                 ctx['full_node_list'] = [
-                    {'id': n['id'], 'title': n['title'], 'status': n['status']}
+                    {'id': n['id'], 'title': n['title'], 'status': n['status'], 'node_type': n['node_type']}
                     for n in nodes
                 ]
                 ctx['completed_cert_nodes'] = [
