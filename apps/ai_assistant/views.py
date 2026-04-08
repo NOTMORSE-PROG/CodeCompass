@@ -34,10 +34,14 @@ class ChatSessionListCreateView(generics.ListCreateAPIView):
         # incomplete onboarding chats never accumulate in the database.
         context_type = serializer.validated_data.get('context_type', 'general')
         if context_type == 'onboarding':
+            # Soft-deactivate prior onboarding sessions instead of hard-deleting,
+            # so any in-flight WebSocket still holding a reference can finish
+            # writing its greeting message without an FK violation.
             ChatSession.objects.filter(
                 user=self.request.user,
                 context_type='onboarding',
-            ).delete()
+                is_active=True,
+            ).update(is_active=False)
         serializer.save(user=self.request.user)
 
 

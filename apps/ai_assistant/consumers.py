@@ -367,6 +367,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         try:
             # Save clean assistant message
             assistant_msg = await self.save_message('assistant', clean_response)
+            if assistant_msg is None:
+                return
 
             # Signal stream complete with suggestions, clean content, optional edit proposals, resources, switch, and upskill
             await self.send(text_data=json.dumps({
@@ -427,6 +429,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
         clean_response, _ = _extract_roadmap_upskill(clean_response)
         try:
             greeting_msg = await self.save_message('assistant', clean_response)
+            if greeting_msg is None:
+                return
             await self.send(text_data=json.dumps({
                 'type': 'stream_end',
                 'message_id': greeting_msg.id,
@@ -535,7 +539,16 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def save_message(self, role: str, content: str):
-        from .models import ChatMessage
+        from .models import ChatMessage, ChatSession
+        # Defensive: the session row may have been deleted/deactivated mid-stream
+        # (e.g. another tab POSTed a new onboarding session). Skip the insert
+        # rather than crashing with a FK violation.
+        if not ChatSession.objects.filter(pk=self.chat_session.pk).exists():
+            logger.warning(
+                '[WS] save_message: session pk=%s no longer exists, skipping insert',
+                self.chat_session.pk,
+            )
+            return None
         return ChatMessage.objects.create(
             session=self.chat_session,
             role=role,
