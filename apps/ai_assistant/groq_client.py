@@ -1264,11 +1264,11 @@ Return ONLY a valid JSON array of exactly 10 objects. No markdown. No extra text
     }},
     "correct": "c",
     "explanation": "C is correct because [specific factual reason].",
-    "distractors": {
+    "distractors": {{
       "a": "[Specific factual reason why A is wrong].",
       "b": "[Specific factual reason why B is wrong].",
       "d": "[Specific factual reason why D is wrong]."
-    }
+    }}
   }}
 ]
 """
