@@ -11,7 +11,6 @@ XP_AMOUNTS = {
     'node_completed': 50,       # Base; overridden by node.xp_reward
     'roadmap_generated': 100,
     'daily_login': 10,
-    'mentor_session': 150,
     'badge_earned': 25,
     'cert_earned': 200,
     'profile_completed': 50,
@@ -24,7 +23,6 @@ BADGE_TRIGGERS = {
     'roadmap_generated': 1,
     'node_completed': [1, 10],      # First node, then 10 nodes
     'streak_days': [7, 30],
-    'mentor_requests': 1,
     'profile_completed': 1,
 }
 
@@ -123,10 +121,6 @@ def _check_badges(user, event_type: str, reference_id):
         elif event_type == 'streak_days':
             streak = getattr(getattr(user, 'student_profile', None), 'streak_count', 0)
             should_award = streak >= badge.trigger_value
-
-        elif event_type == 'mentor_requests':
-            # Mentorship app removed — this trigger type is retired
-            should_award = False
 
         else:
             # Simple: this event type occurring once is enough
