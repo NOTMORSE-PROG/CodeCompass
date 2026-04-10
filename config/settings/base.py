@@ -42,8 +42,6 @@ INSTALLED_APPS = [
     'corsheaders',
     'channels',
     'django_filters',
-    'anymail',
-
     # Local apps
     'apps.accounts',
     'apps.onboarding',
@@ -223,18 +221,16 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ===========================================================================
-# Email — Resend (HTTP API via django-anymail) in production,
-#         console backend for local development.
-# Set RESEND_API_KEY in the Render environment to enable real sending.
+# Email — Brevo SMTP in production, console backend for local development.
+# Set EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend on Render
+# along with EMAIL_HOST_USER and EMAIL_HOST_PASSWORD (Brevo SMTP key).
 # ===========================================================================
-_resend_api_key = env('RESEND_API_KEY', default='')
-
-if _resend_api_key:
-    EMAIL_BACKEND = 'anymail.backends.resend.EmailBackend'
-    ANYMAIL = {'RESEND_API_KEY': _resend_api_key}
-else:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-
+EMAIL_BACKEND = env('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = env('EMAIL_HOST', default='smtp-relay.brevo.com')
+EMAIL_PORT = env.int('EMAIL_PORT', default=587)
+EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='')
 DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='CodeCompass <noreply@codecompass.app>')
 
 FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:5173')
