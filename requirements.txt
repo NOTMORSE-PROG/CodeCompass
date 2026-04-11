@@ -59,4 +59,5 @@ tzdata>=2024.1
 # Production
 gunicorn==23.0.0
 uvicorn==0.34.0
+websockets>=12.0        # Required for uvicorn WebSocket support
 whitenoise==6.8.2
