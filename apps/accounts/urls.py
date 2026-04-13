@@ -1,6 +1,5 @@
 """Auth and profile URL routes."""
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView
 
 from . import views
 
@@ -9,7 +8,7 @@ urlpatterns = [
     path('register/', views.RegisterView.as_view(), name='auth-register'),
     path('login/', views.LoginView.as_view(), name='auth-login'),
     path('logout/', views.logout_view, name='auth-logout'),
-    path('token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
+    path('token/refresh/', views.CustomTokenRefreshView.as_view(), name='token-refresh'),
     path('me/', views.MeView.as_view(), name='auth-me'),
     path('send-change-password-otp/', views.send_change_password_otp_view, name='auth-send-change-password-otp'),
     path('change-password/', views.change_password_view, name='auth-change-password'),

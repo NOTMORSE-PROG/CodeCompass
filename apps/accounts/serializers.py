@@ -90,10 +90,10 @@ class UserSerializer(serializers.ModelSerializer):
         model = CustomUser
         fields = [
             'id', 'email', 'username', 'first_name', 'last_name',
-            'role', 'is_onboarded', 'avatar', 'created_at',
+            'role', 'is_onboarded', 'email_verified', 'avatar', 'created_at',
             'has_password', 'google_connected',
         ]
-        read_only_fields = ['id', 'email', 'role', 'created_at', 'has_password', 'google_connected']
+        read_only_fields = ['id', 'email', 'role', 'created_at', 'email_verified', 'has_password', 'google_connected']
 
 
 class StudentProfileSerializer(serializers.ModelSerializer):

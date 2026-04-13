@@ -19,6 +19,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.settings import api_settings as jwt_settings
 from rest_framework_simplejwt.views import TokenObtainPairView
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -108,6 +109,54 @@ class LoginView(TokenObtainPairView):
             except CustomUser.DoesNotExist:
                 pass
         return response
+
+
+class CustomTokenRefreshView(APIView):
+    """
+    POST /api/auth/token/refresh/
+    Validates the incoming refresh token, blacklists it (rotation), re-reads the
+    user from the database, and issues a fresh token pair with up-to-date claims.
+    The default SimpleJWT TokenRefreshView copies stale claims from the old refresh
+    token, which means changes like email_verified are never reflected until re-login.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        refresh_str = request.data.get('refresh')
+        if not refresh_str:
+            return Response(
+                {'detail': 'Refresh token is required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            old_refresh = RefreshToken(refresh_str)
+        except Exception:
+            return Response(
+                {'detail': 'Token is invalid or expired.'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        user_id = old_refresh.get(jwt_settings.USER_ID_CLAIM)
+        try:
+            user = CustomUser.objects.get(
+                **{jwt_settings.USER_ID_FIELD: user_id}
+            )
+        except CustomUser.DoesNotExist:
+            return Response(
+                {'detail': 'Token is invalid or expired.'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        # Blacklist the old refresh token (rotation)
+        try:
+            old_refresh.blacklist()
+        except AttributeError:
+            pass
+
+        # Issue fresh tokens with current DB state
+        access, refresh = _issue_tokens(user)
+        return Response({'access': access, 'refresh': refresh})
 
 
 class RegisterView(generics.CreateAPIView):
