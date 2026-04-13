@@ -234,6 +234,7 @@ if _email_host_user and _email_host_password:
     EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
     EMAIL_HOST_USER = _email_host_user
     EMAIL_HOST_PASSWORD = _email_host_password
+    EMAIL_TIMEOUT = 10  # seconds — prevents daemon threads from hanging forever on blocked SMTP ports
 else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
