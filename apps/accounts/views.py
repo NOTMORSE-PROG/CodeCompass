@@ -51,7 +51,8 @@ def _email_in_thread(fn, *args):
         try:
             fn(*args)
         except Exception:
-            logger.exception('Email send failed: %s(%s)', fn.__name__, args)
+            recipient = getattr(args[0], 'email', repr(args[0])) if args else '(no args)'
+            logger.exception('Email send failed | fn=%s to=%s', fn.__name__, recipient)
     threading.Thread(target=_run, daemon=True).start()
 
 

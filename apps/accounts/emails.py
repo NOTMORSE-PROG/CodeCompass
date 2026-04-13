@@ -3,6 +3,8 @@ Email sending utilities for the accounts app.
 Each function builds and dispatches one type of transactional email.
 Called by Celery tasks — never directly from views.
 """
+import logging
+
 from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
 from django.core import signing
@@ -11,9 +13,13 @@ from django.template.loader import render_to_string
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
+logger = logging.getLogger(__name__)
+
 
 def _send(subject, template_prefix, context, recipient_email):
     """Render HTML + plain-text templates and dispatch via send_mail."""
+    backend = settings.EMAIL_BACKEND.split('.')[-1]
+    logger.info('Email attempt | to=%s subject=%r backend=%s', recipient_email, subject, backend)
     html_body = render_to_string(f'accounts/emails/{template_prefix}.html', context)
     plain_body = render_to_string(f'accounts/emails/{template_prefix}.txt', context)
     send_mail(
@@ -24,6 +30,7 @@ def _send(subject, template_prefix, context, recipient_email):
         html_message=html_body,
         fail_silently=False,
     )
+    logger.info('Email sent    | to=%s subject=%r', recipient_email, subject)
 
 
 def send_verification_email(user):

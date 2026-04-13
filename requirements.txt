@@ -38,9 +38,6 @@ youtube-transcript-api==1.2.4   # Fetch YouTube captions for quiz generation
 careerjet-api==3.2
 setuptools>=65.0      # required by careerjet-api (pkg_resources)
 
-# Email — HTTP API (avoids SMTP port blocks on Render)
-django-anymail[resend]>=10.0
-
 # Rate limiting
 django-ratelimit==4.1.0
 

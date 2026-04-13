@@ -42,8 +42,6 @@ INSTALLED_APPS = [
     'corsheaders',
     'channels',
     'django_filters',
-    'anymail',
-
     # Local apps
     'apps.accounts',
     'apps.onboarding',
@@ -223,19 +221,13 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ===========================================================================
-# Email — priority order:
-#   1. Resend (anymail) if RESEND_API_KEY is set
-#   2. Gmail SMTP if EMAIL_HOST_USER + EMAIL_HOST_PASSWORD are set
-#   3. Console backend (dev fallback — prints to stdout, never sends)
+# Email — Brevo SMTP when EMAIL_HOST_USER + EMAIL_HOST_PASSWORD are set,
+#         console backend otherwise (dev/CI fallback).
 # ===========================================================================
-_resend_api_key = env('RESEND_API_KEY', default='')
 _email_host_user = env('EMAIL_HOST_USER', default='')
 _email_host_password = env('EMAIL_HOST_PASSWORD', default='')
 
-if _resend_api_key:
-    EMAIL_BACKEND = 'anymail.backends.resend.EmailBackend'
-    ANYMAIL = {'RESEND_API_KEY': _resend_api_key}
-elif _email_host_user and _email_host_password:
+if _email_host_user and _email_host_password:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
     EMAIL_HOST = env('EMAIL_HOST', default='smtp-relay.brevo.com')
     EMAIL_PORT = env.int('EMAIL_PORT', default=587)

@@ -72,7 +72,7 @@ Django REST API and real-time WebSocket server for CodeCompass, an AI-driven car
 | Task queue | Celery + django-celery-beat |
 | AI | Groq API (multi-key pool with auto-rotation) |
 | Auth | SimpleJWT + Google OAuth |
-| Email | Resend HTTP API via django-anymail |
+| Email | Brevo SMTP |
 | Job data | Careerjet API + JSearch (RapidAPI) |
 | Video resources | YouTube Data API v3 |
 
@@ -109,7 +109,8 @@ DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
 REDIS_URL=redis://localhost:6379/0
 
 GROQ_API_KEY=your-groq-api-key          # comma-separate multiple keys for pool rotation
-RESEND_API_KEY=your-resend-api-key
+EMAIL_HOST_USER=your-brevo-smtp-login
+EMAIL_HOST_PASSWORD=your-brevo-smtp-key
 GOOGLE_CLIENT_ID=your-google-oauth-client-id
 YOUTUBE_API_KEY=your-youtube-api-key
 RAPIDAPI_KEY=your-rapidapi-key
@@ -145,7 +146,8 @@ celery -A config worker --loglevel=info
 | `GOOGLE_CLIENT_ID` | Google OAuth 2.0 client ID |
 | `YOUTUBE_API_KEY` | YouTube Data API v3 key |
 | `RAPIDAPI_KEY` | RapidAPI key for job listings |
-| `RESEND_API_KEY` | Resend API key for transactional email |
+| `EMAIL_HOST_USER` | Brevo SMTP login (your Gmail address) |
+| `EMAIL_HOST_PASSWORD` | Brevo SMTP key |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated allowed frontend origins |
 
 ---
