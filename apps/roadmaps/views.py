@@ -618,17 +618,19 @@ def replace_roadmap_node(request, roadmap_pk, node_pk):
         return Response({'detail': 'Cannot replace a completed node.'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Rate limit: one replace per calendar day (PH timezone = UTC+8)
-    ph_tz = zoneinfo.ZoneInfo('Asia/Manila')
-    today_ph = timezone.now().astimezone(ph_tz).date()
-    already_replaced_today = RoadmapNode.objects.filter(
-        roadmap__user=user,
-        last_replaced_at__date=today_ph,
-    ).exists()
-    if already_replaced_today:
-        return Response(
-            {'detail': 'You can only replace a roadmap node once per day. Please try again tomorrow.'},
-            status=429,
-        )
+    # Staff/superusers bypass this limit entirely.
+    if not user.is_staff:
+        ph_tz = zoneinfo.ZoneInfo('Asia/Manila')
+        today_ph = timezone.now().astimezone(ph_tz).date()
+        already_replaced_today = RoadmapNode.objects.filter(
+            roadmap__user=user,
+            last_replaced_at__date=today_ph,
+        ).exists()
+        if already_replaced_today:
+            return Response(
+                {'detail': 'You can only replace a roadmap node once per day. Please try again tomorrow.'},
+                status=429,
+            )
 
     COERCE_INT = {
         'estimated_hours': lambda v: _to_int(v, default=node.estimated_hours, min_val=1),
@@ -705,18 +707,20 @@ def switch_roadmap(request):
         return Response({'detail': 'Active roadmap not found.'}, status=404)
 
     # Rate limit: one switch per calendar day (PH timezone = UTC+8)
-    ph_tz = zoneinfo.ZoneInfo('Asia/Manila')
-    today_ph = tz.now().astimezone(ph_tz).date()
-    already_switched_today = Roadmap.objects.filter(
-        user=user,
-        status=Roadmap.Status.ARCHIVED,
-        updated_at__date=today_ph,
-    ).exists()
-    if already_switched_today:
-        return Response(
-            {'detail': 'You can only switch your learning path once per day. Please try again tomorrow.'},
-            status=429,
-        )
+    # Staff/superusers bypass this limit entirely.
+    if not user.is_staff:
+        ph_tz = zoneinfo.ZoneInfo('Asia/Manila')
+        today_ph = tz.now().astimezone(ph_tz).date()
+        already_switched_today = Roadmap.objects.filter(
+            user=user,
+            status=Roadmap.Status.ARCHIVED,
+            updated_at__date=today_ph,
+        ).exists()
+        if already_switched_today:
+            return Response(
+                {'detail': 'You can only switch your learning path once per day. Please try again tomorrow.'},
+                status=429,
+            )
 
     # Build updated summary from existing onboarding data
     try:
@@ -795,13 +799,15 @@ def upskill_roadmap(request):
         return Response({'detail': 'Active roadmap not found.'}, status=404)
 
     # Rate limit: one upskill per calendar day (PH timezone = UTC+8)
-    ph_tz = zoneinfo.ZoneInfo('Asia/Manila')
-    today_ph = tz.now().astimezone(ph_tz).date()
-    if Roadmap.objects.filter(user=user, status=Roadmap.Status.ARCHIVED, updated_at__date=today_ph).exists():
-        return Response(
-            {'detail': 'You can only upskill once per day. Please try again tomorrow.'},
-            status=429,
-        )
+    # Staff/superusers bypass this limit entirely.
+    if not user.is_staff:
+        ph_tz = zoneinfo.ZoneInfo('Asia/Manila')
+        today_ph = tz.now().astimezone(ph_tz).date()
+        if Roadmap.objects.filter(user=user, status=Roadmap.Status.ARCHIVED, updated_at__date=today_ph).exists():
+            return Response(
+                {'detail': 'You can only upskill once per day. Please try again tomorrow.'},
+                status=429,
+            )
 
     # Validate: at least one certification node must be unlocked (available, in_progress, or completed)
     if not old_roadmap.nodes.filter(node_type='certification').exclude(status='locked').exists():
