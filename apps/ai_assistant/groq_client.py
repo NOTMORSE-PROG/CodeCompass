@@ -367,7 +367,7 @@ Actions:
                       • status is "completed" → tell the student completed nodes are locked to preserve
                         their achievement. Suggest replacing a different node or editing it with edit_node.
 
-Use the node IDs from the "All nodes" list in your context. If you are unsure of a node ID, ask the student to clarify.
+Use the node IDs from the "Roadmap structure" in your context. Nodes are grouped by phase with #N ordinals — when the student says "the 2nd node in Core Skills", match the #N number within that phase to find the correct node_id. If you are still unsure of a node ID, ask the student to clarify.
 NEVER append any tag in the same message where you are still asking for missing information.
 """
 
@@ -588,11 +588,30 @@ def _build_context_block(user_context: dict) -> str:
     if roadmap_id:
         lines.append(f'Roadmap ID: {roadmap_id}')
     if full_node_list:
-        node_lines = [
-            f"  [{n['id']}] {n['title']} (status: {n['status']}, type: {n['node_type']})"
-            for n in full_node_list
-        ]
-        lines.append('All nodes (id / title / status / type):\n' + '\n'.join(node_lines))
+        # Group nodes by phase (milestone nodes mark phase boundaries)
+        phases = []
+        current_phase = {'name': None, 'id': None, 'nodes': []}
+        for n in full_node_list:
+            if n['node_type'] == 'milestone':
+                if current_phase['name'] or current_phase['nodes']:
+                    phases.append(current_phase)
+                current_phase = {'name': n['title'], 'id': n['id'], 'nodes': []}
+            else:
+                current_phase['nodes'].append(n)
+        if current_phase['name'] or current_phase['nodes']:
+            phases.append(current_phase)
+
+        phase_lines = ['Roadmap structure (phases and nodes):']
+        for phase in phases:
+            header = phase['name'] or 'Ungrouped'
+            if phase['id']:
+                header += f"  [milestone_id: {phase['id']}]"
+            phase_lines.append(header)
+            for i, n in enumerate(phase['nodes'], 1):
+                phase_lines.append(
+                    f"  #{i}  [{n['id']}] {n['title']}  (status: {n['status']}, type: {n['node_type']})"
+                )
+        lines.append('\n'.join(phase_lines))
 
     completed_certs = user_context.get('completed_cert_nodes', [])
     active_cert = user_context.get('active_cert_node')
