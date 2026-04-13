@@ -25,6 +25,45 @@ from django.contrib.auth.models import AnonymousUser
 
 logger = logging.getLogger('ai_assistant.consumers')
 
+
+# ---------------------------------------------------------------------------
+# Async-safe Groq streaming bridge
+# Runs the synchronous Groq generator in a background thread so the async
+# Channels event loop is never blocked by network I/O.
+# ---------------------------------------------------------------------------
+
+async def _async_stream(history: list, user_role: str, system_prompt: str):
+    """
+    Wraps stream_chat (sync generator) in a daemon thread and delivers
+    chunks to the event loop via asyncio.Queue.  This prevents the blocking
+    Groq HTTP reads from stalling Django Channels' coroutine scheduler.
+    """
+    import threading
+    from .groq_client import stream_chat
+
+    loop = asyncio.get_running_loop()
+    chunk_queue: asyncio.Queue = asyncio.Queue(maxsize=64)
+    _SENTINEL = object()
+
+    def _produce():
+        try:
+            for chunk in stream_chat(history, user_role, system_prompt=system_prompt):
+                loop.call_soon_threadsafe(chunk_queue.put_nowait, chunk)
+        except Exception as exc:
+            loop.call_soon_threadsafe(chunk_queue.put_nowait, exc)
+        finally:
+            loop.call_soon_threadsafe(chunk_queue.put_nowait, _SENTINEL)
+
+    threading.Thread(target=_produce, daemon=True).start()
+
+    while True:
+        item = await chunk_queue.get()
+        if item is _SENTINEL:
+            break
+        if isinstance(item, Exception):
+            raise item
+        yield item
+
 # ---------------------------------------------------------------------------
 # Input pre-screening — blocks obvious jailbreak attempts before calling Groq
 # ---------------------------------------------------------------------------
@@ -43,14 +82,22 @@ _JAILBREAK_RE = re.compile(
     r'|\byour (true|real|hidden|actual) (self|purpose|identity|instructions?)\b'
     r'|\boverride\b.{0,20}\b(safety|filter|restriction|guideline|system)\b'
     r'|\bbypass\b.{0,20}\b(filter|restriction|safety|content)\b'
-    r'|\bdo anything now\b',
+    r'|\bdo anything now\b'
+    # Prompt-extraction attempts
+    r'|\brepeat after me\b'
+    r'|\bprint (your|the) (system |full |initial |original )?prompt\b'
+    r'|\bwhat (are|were) your (original |initial |full )?instructions\b'
+    r'|\bshow me your (system |full )?prompt\b'
+    # Padding-bypass variants
+    r'|\bignore (all |the )?(above|previous|prior)\b'
+    r'|\bdisregard (all |the |your )?(previous |prior |above )?(instructions?|rules?|guidelines?)\b',
     re.IGNORECASE,
 )
 
 
 def _check_jailbreak(text: str) -> bool:
     """Return True if the message matches a known jailbreak pattern."""
-    return bool(_JAILBREAK_RE.search(text[:500]))
+    return bool(_JAILBREAK_RE.search(text[:2000]))
 
 
 def _extract_suggestions(text: str):
@@ -213,6 +260,9 @@ class ChatConsumer(AsyncWebsocketConsumer):
           If the token is invalid/missing or the session doesn't belong to
           this user, we close immediately with a specific code (4001/4004).
         """
+        import time as _time
+        self._rl_window_start: float = _time.monotonic()
+        self._rl_count: int = 0
         self.session_id = self.scope['url_route']['kwargs']['session_id']
 
         # Complete the HTTP 101 handshake immediately.
@@ -268,6 +318,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
             return
         language = data.get('language', 'english')
 
+        # Per-connection rate limiting: 15 messages per 60-second window
+        import time as _time
+        now = _time.monotonic()
+        if now - self._rl_window_start > 60:
+            self._rl_window_start = now
+            self._rl_count = 0
+        self._rl_count += 1
+        if self._rl_count > 15:
+            logger.warning('[WS] Rate limit hit: session=%s user=%s count=%d', self.session_id, self.user.id, self._rl_count)
+            try:
+                await self.send(text_data=json.dumps({
+                    'type': 'stream_error',
+                    'error': 'Slow down — you can send up to 15 messages per minute.',
+                }))
+            except Exception:
+                pass
+            return
+
         # Block jailbreak attempts before any DB write or Groq call
         if self.chat_session.context_type != 'onboarding' and _check_jailbreak(user_message_text):
             logger.warning('[WS] Blocked jailbreak attempt: session=%s user=%s', self.session_id, self.user.id)
@@ -310,7 +378,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         history = await self.get_message_history()
 
         # Pick system prompt based on session context + personalized user data
-        from .groq_client import stream_chat, get_onboarding_system_prompt, build_career_mentor_prompt
+        from .groq_client import get_onboarding_system_prompt, build_career_mentor_prompt
         if self.chat_session.context_type == 'onboarding':
             system_prompt = get_onboarding_system_prompt(self.user.role)
         else:
@@ -325,7 +393,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         stream_failed = False
         try:
             async with asyncio.timeout(60):
-                for chunk in stream_chat(history, self.user.role, system_prompt=system_prompt):
+                async for chunk in _async_stream(history, self.user.role, system_prompt=system_prompt):
                     full_response += chunk
                     await self.send(text_data=json.dumps({
                         'type': 'stream_chunk',
@@ -386,13 +454,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
     async def _send_greeting(self):
         """Stream the AI's opening onboarding question to the client."""
-        from .groq_client import stream_chat, get_onboarding_system_prompt
+        from .groq_client import get_onboarding_system_prompt
 
         trigger = [{'role': 'user', 'content': '__start__'}]
         full_response = ''
         try:
             async with asyncio.timeout(60):
-                for chunk in stream_chat(trigger, self.user.role, system_prompt=get_onboarding_system_prompt(self.user.role)):
+                async for chunk in _async_stream(trigger, self.user.role, system_prompt=get_onboarding_system_prompt(self.user.role)):
                     full_response += chunk
                     await self.send(text_data=json.dumps({
                         'type': 'stream_chunk',

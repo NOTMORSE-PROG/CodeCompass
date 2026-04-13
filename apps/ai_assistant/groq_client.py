@@ -38,7 +38,8 @@ class _GroqKeyPool:
 
     @property
     def current(self) -> Groq:
-        return self._clients[self._index]
+        with self._lock:
+            return self._clients[self._index]
 
     def rotate(self) -> Groq:
         with self._lock:
@@ -327,8 +328,20 @@ ROADMAP EDITING — LEAN FLOW (minimize back-and-forth):
 DECISION TREE — run this every time the student wants a change:
 
 1. Do you know WHICH node they mean?
-   - No → ask ONE question to identify it, then stop. No tag yet.
-   - Yes → continue to step 2.
+   - Student named a specific node by title or ordinal → continue to step 2.
+   - Student named a PHASE but NOT a specific node (e.g., "Core Skills", "Phase 2", "the build phase") →
+     List EVERY node in that phase from the Roadmap structure, numbered exactly as #1, #2, #3…
+     CRITICAL: Copy the full list from context — do NOT omit any nodes. The count header tells you
+     how many to expect (e.g., "(3 nodes)" means you must list exactly 3). Ask which one they mean.
+     Use this exact format:
+       "There are [N] nodes in [Phase Name] — which one would you like to change?
+        #1 [node title]
+        #2 [node title]
+        #3 [node title]"
+     Stop here. No tag yet.
+   - Student gave no phase or node → ask ONE question: "Which node or phase would you like to change?"
+     Stop here. No tag yet.
+   - Yes (know the specific node) → continue to step 2.
 
 2. Do you know WHAT the new value should be?
    - Student specified it → go to PROPOSE immediately (step 3).
@@ -606,6 +619,7 @@ def _build_context_block(user_context: dict) -> str:
             header = phase['name'] or 'Ungrouped'
             if phase['id']:
                 header += f"  [milestone_id: {phase['id']}]"
+            header += f"  ({len(phase['nodes'])} nodes)"
             phase_lines.append(header)
             for i, n in enumerate(phase['nodes'], 1):
                 phase_lines.append(
@@ -1696,7 +1710,7 @@ def stream_chat(messages: list, user_role: str, system_prompt: str = None):
         messages=system_messages + messages,
         stream=True,
         temperature=0.5,
-        max_tokens=800,
+        max_tokens=1500,
     )
 
     for chunk in stream:
