@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 def _send(subject, template_prefix, context, recipient_email):
     """Render HTML + plain-text templates and dispatch via send_mail."""
-    backend = settings.EMAIL_BACKEND.split('.')[-1]
+    backend = settings.EMAIL_BACKEND.split('.')[-2]  # 'smtp' or 'console'
     logger.info('Email attempt | to=%s subject=%r backend=%s', recipient_email, subject, backend)
     html_body = render_to_string(f'accounts/emails/{template_prefix}.html', context)
     plain_body = render_to_string(f'accounts/emails/{template_prefix}.txt', context)
