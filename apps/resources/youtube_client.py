@@ -61,6 +61,10 @@ PREFERRED_CHANNELS = {
     'codeaesthetic',             # 417K — clean code + software engineering principles
     'dave gray',                 # Full-stack MERN, CSS deep dives, bootcamp-style courses
     'wes bos',                   # 250K+ — modern JS/CSS fundamentals; wesbos.com courses
+    'codevolution',              # 1M+ — Vishwas Gopinath; most complete React/Vue/TypeScript series; cited by LearnWithPath
+    'akshay saini',              # 2M+ — Namaste JavaScript; JS internals (closures, event loop, async); unique "how it works" angle
+    'ben awad',                  # 300K+ — TypeScript + full-stack live coding (GraphQL, React, Docker); cited by Better Stack
+    'lama dev',                  # 500K+ — full-stack MERN project builds; fills "build a real production app" gap
 
     # ── Data Science / ML / AI ───────────────────────────────────────────────
     'statquest with josh starmer',  # Ex-UNC researcher, math/ML visuals
@@ -70,6 +74,10 @@ PREFERRED_CHANNELS = {
     'corey schafer',             # 1M+ — Python, Django, Pandas
     'pydata',                    # NumFOCUS official, conference-grade content
     'andrej karpathy',           # Ex-Tesla AI Director, GPT from scratch
+    'lex fridman',               # 4M+ — MIT researcher; interviews with Karpathy, Hinton, LeCun; big-picture AI perspective
+    'jeremy howard',             # 145K — fast.ai founder; top-down practical deep learning; cited by KDnuggets
+    'hugging face',              # 250K+ — Official Hugging Face; transformers, open-source models, NLP
+    'nicholas renotte',          # 600K+ — computer vision (YOLO), NLP, pose estimation, hands-on AI projects
 
     # ── Cybersecurity ────────────────────────────────────────────────────────
     'the cyber mentor',          # TCM Security, ethical hacking, OSCP prep
@@ -88,12 +96,20 @@ PREFERRED_CHANNELS = {
     'owasp foundation',          # Official OWASP — Top 10, secure coding, web app security standards
     'portswigger',               # Web Security Academy walkthroughs — SQLi, XSS, SSRF labs
     'snyk',                      # DevSecOps, supply chain, container scanning, OWASP 2025 updates
+    'hak5',                      # 1.1M — Darren Kitchen; hardware hacking, WiFi security, physical pentesting tools
+    'malwaretech',               # 450K+ — Marcus Hutchins; advanced malware analysis, threat intel, reverse engineering
+    'insiderphd',                # 280K+ — Katie Paxton-Fear (PhD); web hacking, bug bounty, OSCP prep; cited by PowerDMARC
 
     # ── Mobile Development ───────────────────────────────────────────────────
     'flutter',                   # Google's official Flutter channel
     'reso coder',                # Flutter/Riverpod, Clean Architecture
     'codewithchris',             # Swift/iOS for beginners
     'let\'s build that app',     # iOS, SwiftUI, UIKit
+    'code with andrea',          # 500K+ — Andrea Bizzotto (GDE); production Flutter architecture (Riverpod, clean arch)
+    'the flutter way',           # 300K+ — creative Flutter UI design, animations; fills design-focused gap
+    'sean allen',                # 170K+ — Silicon Valley iOS engineer; Swift, SwiftUI, career advice; cited by Feedspot
+    'kavsoft',                   # 200K+ — SwiftUI creative animations and custom UI; complements Sean Allen
+    'simon grimm',               # 100K+ — voted #1 React Native creator; Expo, cross-platform; Class Central top course
     # ── Mobile Development — Android / Kotlin ───────────────────────────────
     'philipp lackner',           # 244K — Kotlin/Jetpack Compose authority; MVVM deep dives; 14+ yrs exp
     'coding with mitch',         # 190K+ — project-based Android from scratch (Instagram, Maps clones)
@@ -111,12 +127,17 @@ PREFERRED_CHANNELS = {
     'code monkey',               # 500K+ — Unity/C# game mechanics; 1200+ videos; solo dev with Steam games
     'game makers toolkit',       # Award-winning design analysis essays (GMTK); best design theory channel
     'blackthornprod',            # Game dev + art/animation combined; creative indie dev perspective
+    'the coding train',          # 1.5M+ — Daniel Shiffman (NYU); p5.js, creative coding, algorithms visualized
+    'jason weimann',             # 150K+ — Unity C# with design patterns, testing, professional code quality
+    'clear code',                # 200K+ — dedicated Godot 4 tutorials; cited by GodotAcademy as top resource
 
     # ── Backend Development ───────────────────────────────────────────────────
     'amigoscode',                # Spring Boot, Java, microservices, Docker
     'in28minutes - ranga karanam',  # Spring Boot, Spring Cloud, REST APIs
     'telusko',                   # Java, Spring Boot — large beginner base
-    'the net ninja',             # Node.js, Express, MongoDB, GraphQL
+    'java brains',               # 500K+ — Koushik Kothagal; Spring Boot, Security, reactive Java; Javarevisited #1 Spring educator
+    'java techie',               # 186K — Spring WebFlux, Spring Cloud, microservices; reactive/cloud-native backend
+    'stephane maarek',           # 250K+ — Apache Kafka authority + AWS SA; cited by Feedspot as definitive Kafka educator
 
     # ── DevOps / Cloud ────────────────────────────────────────────────────────
     'techworld with nana',       # 900K — best DevOps from-scratch channel
@@ -127,6 +148,10 @@ PREFERRED_CHANNELS = {
     'kunal kushwaha',            # 400K+ — free DevOps bootcamp, CNCF Ambassador; cloud-native foundations
     'bret fisher',               # Docker Captain — Kubernetes, Docker Swarm, containers; 400+ videos
     'devops toolkit',            # Viktor Farcic — GitOps, ArgoCD, Flux, Kubernetes operators deep dives
+    'abhishek veeramalla',       # 600K+ — Kubernetes/DevOps with real-world projects; cited by Microtica blog
+    'john savill\'s technical training',  # 250K+ — Microsoft Principal Engineer; deep Azure AD, networking; fills Azure gap
+    'cncf',                      # 150K+ — Official Cloud Native Computing Foundation; KubeCon talks, cloud-native roadmap
+    'cloud with raj',            # 200K+ — GCP-specific hands-on tutorials; cited as top practical Google Cloud channel
 
     # ── Algorithms / Data Structures / CS Theory ─────────────────────────────
     'mit opencourseware',        # MIT official — university-level rigour
@@ -142,12 +167,17 @@ PREFERRED_CHANNELS = {
     'the primeagen',             # 500K+ — performance, architecture, algorithms; deep software engineering
     'errichto',                  # Competitive programming, algorithmic thinking, Codeforces walkthroughs
     'nick white',                # LeetCode problem breakdowns; clear explanations for interview prep
+    'cs dojo',                   # 1.92M — YK Sugi (ex-Google); CS fundamentals + interview prep; cited by AlgoCademy
+    'clement mihailescu',        # 275K+ — AlgoExpert creator; FAANG strategies + live walkthroughs
 
     # ── UI/UX Design ─────────────────────────────────────────────────────────
     'figma',                     # Official Figma channel
     'designcourse',              # UI design, UX, CSS — veteran instructor
     'flux academy',              # UX strategy, Figma, product design
     'aj&smart',                  # Google Design Sprint partners
+    'mizko',                     # 250K+ — practical Figma tutorials; responsive design, auto layout, variants
+    'the futur',                 # 2.5M — Chris Do; design business, branding; fills "design as career" angle
+    'jesse showalter',           # 440K+ — UX process + frontend implementation; bridges UX and coding
 
     # ── Networking / Systems / Linux ─────────────────────────────────────────
     'david bombal',              # CCNA/CCNP, GNS3, network automation
@@ -156,6 +186,9 @@ PREFERRED_CHANNELS = {
     'chris titus tech',          # 602K — Linux, sysadmin, scripting
     'the linux foundation',      # Official Linux Foundation channel
     'cbt nuggets',               # Professional IT certification training
+    'learn linux tv',            # 500K+ — Jay LaCroix; Linux admin, server setup, distro reviews; fills sysadmin gap
+    'distrotube',                # 300K+ — Derek Taylor; Linux distributions, tiling WMs, daily-use workflows
+    'the linux experiment',      # 300K+ — Nick; weekly Linux news, distro comparisons, practical tips
 
     # ── Filipino / Tagalog educators (PH-focused — aligns with CCS audience) ─
     'sdpt solutions',            # PH — Java/Python/MySQL/mobile in Tagalog
@@ -165,6 +198,8 @@ PREFERRED_CHANNELS = {
     'john carlo franco',         # PH — programming tips in Tagalog
     'dojicreates',               # PH — Tagalog: C++, Web, JS, Python, Java; source code + notes
     'coding kuya',               # PH — IT career advice, industry trends, how to become a programmer
+    'programming ph',            # PH — Filipino programming community tutorials and advice
+    'rem lampa',                 # PH — FreeCodeCamp Manila Community Leader; live IT discussions for Filipinos
 
     # ── Deeper DSA / Algorithms ──────────────────────────────────────────────
     'tushar roy - coding made simple',   # DSA, system design, FAANG prep
@@ -208,15 +243,53 @@ PREFERRED_CHANNELS = {
     'seattle data guy',          # 114K+ — Snowflake, dbt, BigQuery; practical hands-on production content
     'darshil parmar',            # 400K — PySpark, Kafka, end-to-end pipelines; largest DE channel
     'trendytech',                # 30K+ — big data, SQL, AWS, interview prep; 30K+ data engineers trained
+    'databricks',                # 100K+ — Official Apache Spark + Delta Lake; highest-authority Spark content
 
     # ── Embedded Systems / IoT ───────────────────────────────────────────────
     'dronebotworkshop',          # 459K — Arduino/Raspberry Pi/ESP32; 30.6M views; diagrams + code
     'andreas spiess',            # 330K+ — IoT, LoRa, sensors, ESP32/8266; "guy with Swiss accent"
     'jeff geerling',             # 253K+ — Raspberry Pi, SBCs, Ansible, Kubernetes on hardware
     'arduino',                   # Official Arduino channel — hardware/firmware updates, educational builds
+    'raspberry pi',              # 300K+ — Official Raspberry Pi Foundation; hardware tutorials, SBC projects
+    'eevblog',                   # 900K+ — Dave Jones; electronics teardowns, circuit design; Feedspot #1 electronics
 
     # ── Database Internals ───────────────────────────────────────────────────
     'cmu database group',        # Andy Pavlo (CMU) — graduate-level DB internals, query processing, storage
+
+    # ── SQL / Databases — Practical ──────────────────────────────────────────
+    'database star',             # 150K+ — Ben Brumm; practical SQL, DB design, performance tuning; LearnSQL #1 SQL channel
+    'techtfq',                   # 200K+ — Thoufiq Mohammed; complex SQL, analytical functions, interview prep
+    'mongodb',                   # 300K+ — Official MongoDB; tutorials, aggregation pipelines, Atlas
+    'kudvenkat',                 # 1M+ — SQL, SSIS, reporting services; large audience, topic-specific playlists
+
+    # ── Rust / Go / C++ — Systems Languages ──────────────────────────────────
+    'lets get rusty',            # 88.9K — most complete beginner-to-advanced Rust channel; cited by Placement Preparation
+    'no boilerplate',            # 200K+ — concise high-signal Rust concept videos; Rust subreddit top recommendation
+    'tensor programming',        # Rust web + systems; founded by Tauri contributor; practical focus
+    'the cherno',                # 700K+ — Yan Chernikov (ex-EA); C++ game engine dev; Feedspot #1 C++ channel
+    'caleb curry',               # 500K+ — C, C++, SQL; 1500+ tutorials; Placement Preparation top C++ list
+    'neso academy',              # 760K+ — OS fundamentals, compiler design; 5-star rated; fills systems theory gap
+    'the go programming language',  # 100K+ — Official Go channel; authoritative, covers language evolution
+    'justforfunc',               # 40.1K — Francesc Campoy (ex-Google Go team); idiomatic Go, code reviews
+
+    # ── Software Architecture / Engineering Excellence ────────────────────────
+    'codeopinion',               # 125K+ — Derek Comartin; CQRS, event sourcing, microservices; Apiumhub top architecture list
+    'dave farley',               # 300K+ — Continuous Delivery co-author; TDD, CI/CD philosophy; ThoughtWorks cited
+    'goto conferences',          # 500K+ — Martin Fowler, Sam Newman, Kevlin Henney talks; conference-grade engineering
+    'mark richards',             # 150K+ — "Software Architecture Monday" series; enterprise-scale patterns
+    'derek banas',               # 2M+ — GoF design patterns series (29 videos); cited by FromDev as clearest implementation
+
+    # ── Web3 / Blockchain / Solidity ─────────────────────────────────────────
+    'patrick collins',           # 500K+ — Chainlink developer advocate; Alchemy #1 Solidity educator; free Foundry courses
+    'dapp university',           # 100K+ — full-stack dApp development, DeFi protocols, smart contract security
+    'eat the blocks',            # 230K+ — Julien Klepatch; Ethereum/DeFi/Solidity; Hardhat + Ethers.js projects
+    'smart contract programmer', # 200K+ — Solidity 0.8, Vyper, smart contract exploits; unique security angle
+    'nader dabit',               # 150K+ — Web3 + traditional dev bridge; GraphQL, DeFi; cited by Alchemy
+
+    # ── Official Ecosystem Channels ──────────────────────────────────────────
+    'google developers',         # 1M+ — Official Google; Flutter, TensorFlow, Web APIs, Firebase, Android
+    'jetbrains',                 # 500K+ — Official JetBrains; Kotlin, IntelliJ tips, IDE workflows
+    'microsoft developer',       # 500K+ — Official Microsoft; C#/.NET, VS Code, Azure, Copilot
 }
 
 
