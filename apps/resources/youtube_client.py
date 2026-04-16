@@ -17,6 +17,7 @@ Diversity + difficulty awareness (see modular-foraging-cat plan, Part B):
 - retry with jitter on transient 429/5xx; Django-cached responses (Redis) so
   repeat queries across users don't burn quota.
 """
+import datetime
 import hashlib
 import logging
 import random
@@ -55,6 +56,11 @@ PREFERRED_CHANNELS = {
     'academind',                 # 841K — React, Vue, Angular, Node.js
     'kevin powell',              # CSS authority — best CSS educator on YouTube
     'programming with mosh',     # Clean beginner-friendly full courses
+    'javascript mastery',        # 1M+ — React/Next.js/GSAP/TypeScript; project-driven, modern JS
+    'bro code',                  # 3.15M — full-length courses: 12-hr Java/Python/JS, C++, C#
+    'codeaesthetic',             # 417K — clean code + software engineering principles
+    'dave gray',                 # Full-stack MERN, CSS deep dives, bootcamp-style courses
+    'wes bos',                   # 250K+ — modern JS/CSS fundamentals; wesbos.com courses
 
     # ── Data Science / ML / AI ───────────────────────────────────────────────
     'statquest with josh starmer',  # Ex-UNC researcher, math/ML visuals
@@ -74,12 +80,25 @@ PREFERRED_CHANNELS = {
     'networkchuck',              # 5.1M — CCNA-certified, great entry point
     'null byte',                 # Ethical hacking, Kali Linux
     'sans internet stormcast',   # SANS Institute — top infosec org
+    # ── Cybersecurity — Blue Team / Bug Bounty ───────────────────────────────
+    '13cubed',                   # DFIR specialist — forensic artifacts, malware analysis; blue team authority
+    'nahamsec',                  # Bug bounty — CTF, live hacking, interviews with top hunters
+    'stok',                      # Bug bounty vlogging + real-world vulnerability research
+    # ── Application Security / DevSecOps ────────────────────────────────────
+    'owasp foundation',          # Official OWASP — Top 10, secure coding, web app security standards
+    'portswigger',               # Web Security Academy walkthroughs — SQLi, XSS, SSRF labs
+    'snyk',                      # DevSecOps, supply chain, container scanning, OWASP 2025 updates
 
     # ── Mobile Development ───────────────────────────────────────────────────
     'flutter',                   # Google's official Flutter channel
     'reso coder',                # Flutter/Riverpod, Clean Architecture
     'codewithchris',             # Swift/iOS for beginners
     'let\'s build that app',     # iOS, SwiftUI, UIKit
+    # ── Mobile Development — Android / Kotlin ───────────────────────────────
+    'philipp lackner',           # 244K — Kotlin/Jetpack Compose authority; MVVM deep dives; 14+ yrs exp
+    'coding with mitch',         # 190K+ — project-based Android from scratch (Instagram, Maps clones)
+    'android developers',        # 1M+ — Official Google Android; MAD Skills, Compose, performance
+    'stevdza-san',               # Jetpack Compose beginner → advanced; animations, navigation, custom UI
 
     # ── Game Development ─────────────────────────────────────────────────────
     'unity',                     # Official Unity Technologies
@@ -89,6 +108,9 @@ PREFERRED_CHANNELS = {
     'heartbeast',                # Godot, Game Maker — beginner friendly
     'gamefromscratch',           # Multi-engine reviews and tutorials
     'sebastian lague',           # Procedural generation, creative CS
+    'code monkey',               # 500K+ — Unity/C# game mechanics; 1200+ videos; solo dev with Steam games
+    'game makers toolkit',       # Award-winning design analysis essays (GMTK); best design theory channel
+    'blackthornprod',            # Game dev + art/animation combined; creative indie dev perspective
 
     # ── Backend Development ───────────────────────────────────────────────────
     'amigoscode',                # Spring Boot, Java, microservices, Docker
@@ -102,6 +124,9 @@ PREFERRED_CHANNELS = {
     'devops directive',          # Kubernetes, Helm, Terraform, GitOps
     'kodekloud',                 # Kubernetes, CKA, Ansible — cert prep
     'a cloud guru',              # AWS, Azure, GCP certification
+    'kunal kushwaha',            # 400K+ — free DevOps bootcamp, CNCF Ambassador; cloud-native foundations
+    'bret fisher',               # Docker Captain — Kubernetes, Docker Swarm, containers; 400+ videos
+    'devops toolkit',            # Viktor Farcic — GitOps, ArgoCD, Flux, Kubernetes operators deep dives
 
     # ── Algorithms / Data Structures / CS Theory ─────────────────────────────
     'mit opencourseware',        # MIT official — university-level rigour
@@ -113,6 +138,10 @@ PREFERRED_CHANNELS = {
     'cs50',                      # Harvard CS50 — gold standard free CS course
     'mycodeschool',              # Linked lists, trees — timeless visual DSA
     'cs50 – computer science courses for everyone',  # alt name
+    'bytebytego',                # 500K+ — Alex Xu (ex-Twitter/Apple); system design authority; 1M+ newsletter
+    'the primeagen',             # 500K+ — performance, architecture, algorithms; deep software engineering
+    'errichto',                  # Competitive programming, algorithmic thinking, Codeforces walkthroughs
+    'nick white',                # LeetCode problem breakdowns; clear explanations for interview prep
 
     # ── UI/UX Design ─────────────────────────────────────────────────────────
     'figma',                     # Official Figma channel
@@ -134,6 +163,8 @@ PREFERRED_CHANNELS = {
     'learn computer today',      # PH (Michael Tan) — CS/IT for Filipinos
     'pinoyfreecoder',            # PH — full-stack tutorials in Filipino
     'john carlo franco',         # PH — programming tips in Tagalog
+    'dojicreates',               # PH — Tagalog: C++, Web, JS, Python, Java; source code + notes
+    'coding kuya',               # PH — IT career advice, industry trends, how to become a programmer
 
     # ── Deeper DSA / Algorithms ──────────────────────────────────────────────
     'tushar roy - coding made simple',   # DSA, system design, FAANG prep
@@ -151,6 +182,10 @@ PREFERRED_CHANNELS = {
     'two minute papers',         # AI research summaries
     'yannic kilcher',            # LLM paper deep-dives
     'codebasics',                # data science + ML in Python
+    'deeplearningai',            # Andrew Ng (Stanford/Google Brain) — ML/deep learning/MLOps; highest authority
+    'tina huang',                # 1M+ — ex-Meta data scientist; AI/ML accessible, bridges theory + practice
+    'assemblyai',                # NLP, speech AI, LLMs, audio deep learning; technical company tutorials
+    'google cloud tech',         # Official Google Cloud — GenAI, Vertex AI, Gemini; updated weekly
 
     # ── Backend / system design ──────────────────────────────────────────────
     'arjan codes',               # Python clean architecture + patterns
@@ -167,6 +202,21 @@ PREFERRED_CHANNELS = {
     'josh tried coding',         # Josh Comeau — frontend, animations
     'theo - t3.gg',              # modern full-stack JS/TS
     'jack herrington',           # React patterns, Next.js, TS
+
+    # ── Data Engineering / ETL / Pipelines ──────────────────────────────────
+    'learn data engineering',    # 230K+ — Andreas Kretz; Airflow, dbt, Spark, Kafka; whiteboards + cookbook
+    'seattle data guy',          # 114K+ — Snowflake, dbt, BigQuery; practical hands-on production content
+    'darshil parmar',            # 400K — PySpark, Kafka, end-to-end pipelines; largest DE channel
+    'trendytech',                # 30K+ — big data, SQL, AWS, interview prep; 30K+ data engineers trained
+
+    # ── Embedded Systems / IoT ───────────────────────────────────────────────
+    'dronebotworkshop',          # 459K — Arduino/Raspberry Pi/ESP32; 30.6M views; diagrams + code
+    'andreas spiess',            # 330K+ — IoT, LoRa, sensors, ESP32/8266; "guy with Swiss accent"
+    'jeff geerling',             # 253K+ — Raspberry Pi, SBCs, Ansible, Kubernetes on hardware
+    'arduino',                   # Official Arduino channel — hardware/firmware updates, educational builds
+
+    # ── Database Internals ───────────────────────────────────────────────────
+    'cmu database group',        # Andy Pavlo (CMU) — graduate-level DB internals, query processing, storage
 }
 
 
@@ -225,6 +275,15 @@ _META_TITLE_PATTERNS = [
     'reaction to', 'responding to', 'what nobody tells you', 'you need to know',
     'tier list', 'ranked', 'vlog', 'q&a', 'ama', 'best of', 'top 10', 'top 5',
     'roadmap 2024', 'roadmap 2025', 'roadmap 2026', 'roadmap 2027',
+    # Time-challenge content — always surface-level, rarely a deep tutorial
+    'in 1 day', 'in 7 days', 'in 30 days', 'in one day', 'in one week',
+    # Comparison / debate (space-padded) — opinion pieces, not tutorials
+    ' vs ',
+    # Hype / engagement bait
+    'watch before', 'before you start', 'changed my life',
+    'why most developers', 'most programmers',
+    # Roundup listicles — not node-specific tutorials
+    'tools every', 'every developer should',
 ]
 
 # ---------------------------------------------------------------------------
@@ -284,23 +343,55 @@ def _clamp_difficulty(d) -> int:
         return 2
 
 
+def _enrich_short_title(node_title: str, node_description: str) -> str:
+    """
+    Widen an ambiguous node title by prepending the first 4 words of the
+    description. Prevents over-broad queries for single-word or two-word
+    titles like "Arrays", "Git", "SQL" that otherwise return unrelated content.
+    Only applies when the title is <= 2 words and a description exists.
+    """
+    if len((node_title or '').split()) <= 2 and node_description:
+        context = ' '.join(node_description.split()[:4])
+        return f'{node_title} {context}'
+    return node_title
+
+
+# Current year appended to beginner queries so learners get fresh content
+# instead of high-ranking 2016-era tutorials.
+_CURRENT_YEAR = str(datetime.date.today().year)
+
+
 def _build_query_variants(node_title: str, node_description: str,
                           difficulty: int, user_id, node_id) -> list:
     """
     Build 2-3 search query variants for a node, parametrized by difficulty
     and deterministically chosen per (user, node). Returns at least one
     variant even when node_title is a single word.
+
+    Changes vs original:
+    - B2: short/ambiguous titles (<= 2 words) are enriched with description context
+    - B3: difficulty 1-2 variants include the current year to bias toward fresh content
     """
+    # B2 — anchor ambiguous titles with description context
+    effective_title = _enrich_short_title(node_title or '', node_description or '')
+
     d = _clamp_difficulty(difficulty)
     pool = _DIFFICULTY_SUFFIX_POOL[d]
     rng = _deterministic_rng(user_id, node_id)
     picked = rng.sample(pool, k=min(2, len(pool)))
-    base = (node_title or '').strip()
+    base = effective_title.strip()
     variants = [f'{base} {suffix}'.strip() for suffix in picked if base]
     if node_description and len(node_description.split()) >= 4:
         variants.append(node_description.strip()[:80])
     if not variants:
         variants = [base or 'programming tutorial']
+
+    # B3 — append current year to one variant for beginner nodes so stale
+    # 2016-era tutorials don't dominate (they rank high on "relevance" but
+    # their syntax/APIs are outdated).
+    if d <= 2 and variants:
+        variants[0] = f'{variants[0]} {_CURRENT_YEAR}'
+
     return variants
 
 
