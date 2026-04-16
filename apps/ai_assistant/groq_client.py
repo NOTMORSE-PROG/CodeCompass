@@ -457,6 +457,73 @@ IMPORTANT RULES:
 """
 
 # ---------------------------------------------------------------------------
+# Scope fences — injected into non-roadmap modes to enforce two rules:
+#   1. No roadmap-mutating tags (mutation guard — all non-roadmap modes)
+#   2. Topic-domain guard — redirect clearly off-domain questions to the right tab
+#
+# Defense-in-depth: prompts alone are bypassable, so server-side tag allowlist
+# + API permission back up rule 1. Rule 2 is prompt-only (topic steering).
+# ---------------------------------------------------------------------------
+
+_SCOPE_FENCES = {
+    # General tab — catch-all advisor; no topic restriction, only mutation guard.
+    'general': """
+━━━ SCOPE FENCE — GENERAL TAB ━━━
+You are in the General tab. You can answer any career, programming, or CS question.
+You MUST NOT emit [ROADMAP_EDIT: ...], [ROADMAP_SWITCH: ...], or [ROADMAP_UPSKILL: ...]
+tags. If the student asks to change or switch their roadmap, redirect in one sentence:
+"Roadmap changes happen in the Roadmap tab — switch over and I can help you there."
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+""",
+
+    # Jobs tab — PH job hunting, interviews, salary, freelancing, OJT only.
+    'job': """
+━━━ SCOPE FENCE — JOBS TAB ━━━
+You are in the Jobs tab. Your domain: job hunting, PH tech job market, interviews,
+resumes, salary, freelancing, OJT/internships, and career moves.
+
+TOPIC GUARD — if the student's question is clearly outside this domain:
+• General programming concepts ("explain recursion", "what is OOP") →
+  redirect: "That's a general programming question — the General tab is the right
+  place for that. Here I focus on job hunting and career advice."
+• University selection ("which school for BSCS?") →
+  redirect: "University questions are handled in the University tab."
+• Roadmap changes → "Roadmap changes happen in the Roadmap tab."
+
+If the question connects to job context (e.g. "what skills do employers look for in
+a backend dev?"), answer it — you don't need to redirect borderline questions.
+
+You MUST NOT emit [ROADMAP_EDIT: ...], [ROADMAP_SWITCH: ...], or [ROADMAP_UPSKILL: ...] tags.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+""",
+
+    # University tab — PH university selection, programs, scholarships, entrance exams only.
+    'university': """
+━━━ SCOPE FENCE — UNIVERSITY TAB ━━━
+You are in the University tab. Your domain: Philippine university selection,
+CCS programs (BSCS/BSIT/BSIS/BSCpE), scholarships (DOST, UniFAST, SM, Ayala),
+entrance exams (UPCAT, DLSUCET, ACET, USTET), and academic planning.
+
+TOPIC GUARD — if the student's question is clearly outside this domain:
+• General programming concepts ("what is the best programming language?",
+  "explain data structures", "how does Python work?") →
+  redirect: "That's a general programming question — ask me that in the General tab.
+  Here I can help with university selection, programs, scholarships, and entrance exams."
+• Job hunting ("how do I find a job?", "what salary should I expect?") →
+  redirect: "Job questions are handled in the Jobs tab."
+• Roadmap changes → "Roadmap changes happen in the Roadmap tab."
+
+If the question relates to academics in the context of a university program
+(e.g. "what programming languages are taught in BSCS?"), answer it — that is
+squarely within this tab's scope.
+
+You MUST NOT emit [ROADMAP_EDIT: ...], [ROADMAP_SWITCH: ...], or [ROADMAP_UPSKILL: ...] tags.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+""",
+}
+
+
+# ---------------------------------------------------------------------------
 # Restrictions — injected into ALL non-onboarding prompts
 # ---------------------------------------------------------------------------
 _RESTRICTIONS_BLOCK = """
@@ -546,10 +613,20 @@ Guidelines:
 """
 
 
-def _build_context_block(user_context: dict) -> str:
-    """Build a personalized student context block to prepend to any system prompt."""
+def _build_context_block(user_context: dict, mode: str = 'roadmap') -> str:
+    """
+    Build a personalized student context block to prepend to any system prompt.
+
+    Scope-aware: in non-roadmap modes (general/job/university) we omit
+    roadmap IDs and the full node list so the AI can't "helpfully" emit
+    roadmap-mutating tags it shouldn't have access to. Keeps high-level
+    personalization (career goal, program, % complete) without exposing
+    the tool schema (node_ids, roadmap_id, cert state).
+    """
     if not user_context:
         return ''
+
+    scope_leaks_roadmap = mode == 'roadmap'
 
     lines = ['━━━ STUDENT CONTEXT ━━━']
 
@@ -598,9 +675,9 @@ def _build_context_block(user_context: dict) -> str:
 
     roadmap_id = user_context.get('roadmap_id', '')
     full_node_list = user_context.get('full_node_list', [])
-    if roadmap_id:
+    if roadmap_id and scope_leaks_roadmap:
         lines.append(f'Roadmap ID: {roadmap_id}')
-    if full_node_list:
+    if full_node_list and scope_leaks_roadmap:
         # Group nodes by phase (milestone nodes mark phase boundaries)
         phases = []
         current_phase = {'name': None, 'id': None, 'nodes': []}
@@ -629,9 +706,9 @@ def _build_context_block(user_context: dict) -> str:
 
     completed_certs = user_context.get('completed_cert_nodes', [])
     active_cert = user_context.get('active_cert_node')
-    if completed_certs:
+    if completed_certs and scope_leaks_roadmap:
         lines.append('Completed Certification Goals: ' + ', '.join(completed_certs))
-    if active_cert:
+    if active_cert and scope_leaks_roadmap:
         lines.append(f'Currently Working On (Certification): {active_cert}')
 
     lines.append('━━━━━━━━━━━━━━━━━━━━━━')
@@ -873,23 +950,36 @@ def build_career_mentor_prompt(user_context: dict = None, mode: str = 'general',
     Return a personalized system prompt for the AI career mentor.
     Selects the base prompt by mode, prepends student context, then applies language override.
     The language override is placed first so the model treats it as highest-priority.
+
+    Scope-aware: roadmap-mutating action blocks (ROADMAP_SWITCH / ROADMAP_UPSKILL)
+    are only injected for mode='roadmap'. Non-roadmap modes receive an explicit
+    scope-fence telling the model NOT to emit those tags and to redirect to the
+    Roadmap tab instead. The context block also drops roadmap IDs in non-roadmap
+    modes (see _build_context_block) so the tool schema isn't exposed.
     """
     base = _MODE_PROMPTS.get(mode, SYSTEM_PROMPT_CAREER_MENTOR)
-    context_block = _build_context_block(user_context or {})
+    context_block = _build_context_block(user_context or {}, mode=mode)
     prompt = (context_block + '\n\n' + base.strip()) if context_block else base.strip()
 
     # Inject approved resource URLs for modes where resource recommendations occur
     if mode in ('general', 'roadmap', 'job'):
         prompt += '\n\n' + LEARNING_RESOURCES_BLOCK
 
-    # Inject roadmap-switching instructions whenever the student has an active roadmap.
-    # Applied to all chat modes (general, roadmap, job) so the AI knows to emit
-    # [ROADMAP_SWITCH: {...}] regardless of which mode the student is currently using.
-    if mode in ('general', 'roadmap', 'job') and (user_context or {}).get('roadmap_id'):
+    # Roadmap-mutation blocks are ROADMAP-ONLY. Previously injected into
+    # general/roadmap/job — that was the scope-leak bug. Non-roadmap modes get
+    # a scope fence (below) instead, reinforced by server-side tag stripping
+    # and the FromRoadmapScopedSession API permission.
+    if mode == 'roadmap' and (user_context or {}).get('roadmap_id'):
         prompt += '\n\n' + _ROADMAP_SWITCH_BLOCK
         ctx = user_context or {}
         if ctx.get('completed_cert_nodes') or ctx.get('active_cert_node'):
             prompt += '\n\n' + _ROADMAP_UPSKILL_BLOCK
+
+    # Scope fence: (1) mutation guard — blocks ROADMAP_EDIT/SWITCH/UPSKILL tags;
+    # (2) topic-domain guard — redirects clearly off-domain questions (University
+    # stays university; Jobs stays jobs; General is catch-all).
+    if mode in _SCOPE_FENCES:
+        prompt += '\n\n' + _SCOPE_FENCES[mode]
 
     # Inject content restrictions into all non-onboarding modes
     prompt += '\n\n' + _RESTRICTIONS_BLOCK

@@ -6,6 +6,7 @@ from rest_framework import generics, permissions, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from apps.accounts.permissions import IsStudent
+from apps.ai_assistant.permissions import FromRoadmapScopedSession
 from apps.gamification.engine import award_xp
 from .models import Roadmap, RoadmapNode, NodeResource, AssessmentSession, VideoWatchUnlock
 from .serializers import RoadmapSerializer, RoadmapListSerializer, RoadmapNodeSerializer
@@ -559,12 +560,15 @@ def submit_assessment(request, roadmap_pk, node_pk, resource_pk, session_pk):
 # ---------------------------------------------------------------------------
 
 @api_view(['PATCH'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.IsAuthenticated, FromRoadmapScopedSession])
 def edit_roadmap_meta(request, roadmap_pk):
     """
     PATCH /api/roadmaps/{id}/edit/
     Edit roadmap metadata: title, description, estimated_weeks.
     Called when the AI proposes a roadmap-level change and the user clicks Apply.
+
+    Scope-gated: when called from the chat UI, the X-Chat-Session-Id header
+    must point to a roadmap-scoped session (FromRoadmapScopedSession).
     """
     roadmap = get_object_or_404(Roadmap, pk=roadmap_pk, user=request.user)
     allowed = {'title', 'description', 'estimated_weeks'}
@@ -575,12 +579,14 @@ def edit_roadmap_meta(request, roadmap_pk):
 
 
 @api_view(['PATCH'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.IsAuthenticated, FromRoadmapScopedSession])
 def edit_node_content(request, roadmap_pk, node_pk):
     """
     PATCH /api/roadmaps/{id}/nodes/{nid}/edit/
     Edit node content: title, description, estimated_hours, difficulty.
     Does NOT touch node status or progress — only textual/structural metadata.
+
+    Scope-gated: chat-originated calls must come from a roadmap-scoped session.
     """
     node = get_object_or_404(
         RoadmapNode, pk=node_pk, roadmap__pk=roadmap_pk, roadmap__user=request.user
@@ -599,13 +605,15 @@ def edit_node_content(request, roadmap_pk, node_pk):
 
 
 @api_view(['PATCH'])
-@permission_classes([permissions.IsAuthenticated])
+@permission_classes([permissions.IsAuthenticated, FromRoadmapScopedSession])
 def replace_roadmap_node(request, roadmap_pk, node_pk):
     """
     PATCH /api/roadmaps/{id}/nodes/{nid}/replace/
     Replace the content of a node in-place (title, description, node_type,
     estimated_hours, difficulty). Resets node progress to LOCKED.
     Limited to once per calendar day per user (Asia/Manila timezone).
+
+    Scope-gated: chat-originated calls must come from a roadmap-scoped session.
     """
     import zoneinfo
     user = request.user
@@ -678,13 +686,15 @@ def unlock_video_watch(request, roadmap_pk, node_pk, resource_pk):
 
 
 @api_view(['POST'])
-@permission_classes([IsStudent])
+@permission_classes([IsStudent, FromRoadmapScopedSession])
 def switch_roadmap(request):
     """
     POST /api/roadmaps/switch/
     Archives the current active roadmap and generates a new one for the given path/goal.
     Body: { "roadmap_id": <int>, "new_path": "Data Science", "career_goal": "data analyst" }
     Rate-limited to one switch per calendar day (PH timezone).
+
+    Scope-gated: chat-originated calls must come from a roadmap-scoped session.
     """
     from apps.ai_assistant.groq_client import generate_roadmap as ai_generate
     from .generators import save_roadmap_from_ai
@@ -773,13 +783,15 @@ _LEVEL_UP = {'beginner': 'intermediate', 'basic': 'intermediate', 'intermediate'
 
 
 @api_view(['POST'])
-@permission_classes([IsStudent])
+@permission_classes([IsStudent, FromRoadmapScopedSession])
 def upskill_roadmap(request):
     """
     POST /api/roadmaps/upskill/
     Archives the current active roadmap and generates a new, more advanced one for the same path.
     Body: { "roadmap_id": <int> }
     Rate-limited to one upskill per calendar day (PH timezone).
+
+    Scope-gated: chat-originated calls must come from a roadmap-scoped session.
     """
     from apps.ai_assistant.groq_client import generate_roadmap as ai_generate
     from .generators import save_roadmap_from_ai

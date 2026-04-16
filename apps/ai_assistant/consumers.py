@@ -209,6 +209,60 @@ def _extract_edit_proposals(text: str):
 _ALLOWED_ACTIONS = {'edit_node', 'edit_roadmap', 'replace_node'}
 
 
+# ---------------------------------------------------------------------------
+# Per-scope tag allowlist — defense-in-depth against prompt leakage.
+# The AI shouldn't emit roadmap-mutating tags from non-roadmap modes in the
+# first place (see _SCOPE_FENCES in groq_client.py), but if it does, we
+# strip them from the outgoing payload so clients never see an actionable card.
+# ---------------------------------------------------------------------------
+ALLOWED_TAGS_BY_SCOPE = {
+    'onboarding': {'suggestions'},
+    'general':    {'suggestions', 'resources'},
+    'roadmap':    {'suggestions', 'resources', 'edit_proposals', 'roadmap_switch', 'roadmap_upskill'},
+    'job':        {'suggestions', 'resources'},
+    'university': {'suggestions', 'resources'},
+}
+
+
+def _extract_tags_for_scope(full_response: str, scope: str):
+    """
+    Run every extractor (they always strip their tags from visible text — good
+    hygiene so students never see stray `[ROADMAP_SWITCH: ...]` in chat)
+    but null out outputs for tags NOT in this scope's allowlist.
+    Logs a warning when a disallowed tag is stripped (telemetry).
+
+    Returns: (clean_text, suggestions, edit_proposals, resources, roadmap_switch, roadmap_upskill)
+    """
+    allowed = ALLOWED_TAGS_BY_SCOPE.get(scope, {'suggestions'})
+    clean, suggestions = _extract_suggestions(full_response)
+    clean, edit_proposals = _extract_edit_proposals(clean)
+    clean, resources = _extract_resources(clean)
+    clean, roadmap_switch = _extract_roadmap_switch(clean)
+    clean, roadmap_upskill = _extract_roadmap_upskill(clean)
+
+    stripped = []
+    if edit_proposals and 'edit_proposals' not in allowed:
+        stripped.append('edit_proposals')
+        edit_proposals = []
+    if roadmap_switch and 'roadmap_switch' not in allowed:
+        stripped.append('roadmap_switch')
+        roadmap_switch = None
+    if roadmap_upskill and 'roadmap_upskill' not in allowed:
+        stripped.append('roadmap_upskill')
+        roadmap_upskill = None
+    if resources and 'resources' not in allowed:
+        stripped.append('resources')
+        resources = []
+    if suggestions and 'suggestions' not in allowed:
+        stripped.append('suggestions')
+        suggestions = []
+
+    if stripped:
+        logger.warning('[WS-SCOPE] scope=%s stripped disallowed tags: %s', scope, stripped)
+
+    return clean, suggestions, edit_proposals, resources, roadmap_switch, roadmap_upskill
+
+
 def _is_valid_proposal(proposal: dict) -> bool:
     """
     Returns True only if the proposal has all required fields with real values.
@@ -425,12 +479,18 @@ class ChatConsumer(AsyncWebsocketConsumer):
         if stream_failed or not full_response:
             return
 
-        # Strip all structured tags from saved content
-        clean_response, suggestions = _extract_suggestions(full_response)
-        clean_response, edit_proposals = _extract_edit_proposals(clean_response)
-        clean_response, resources = _extract_resources(clean_response)
-        clean_response, roadmap_switch = _extract_roadmap_switch(clean_response)
-        clean_response, roadmap_upskill = _extract_roadmap_upskill(clean_response)
+        # Strip structured tags AND gate them by the session's scope. Tags
+        # disallowed for this scope are stripped from visible text and nulled
+        # from the payload so the client never sees an actionable card outside
+        # its intended mode (e.g. roadmap mutations from the Jobs tab).
+        (
+            clean_response,
+            suggestions,
+            edit_proposals,
+            resources,
+            roadmap_switch,
+            roadmap_upskill,
+        ) = _extract_tags_for_scope(full_response, self.chat_session.context_type)
 
         try:
             # Save clean assistant message
