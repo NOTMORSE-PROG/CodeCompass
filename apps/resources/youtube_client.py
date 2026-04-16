@@ -65,6 +65,9 @@ PREFERRED_CHANNELS = {
     'akshay saini',              # 2M+ — Namaste JavaScript; JS internals (closures, event loop, async); unique "how it works" angle
     'ben awad',                  # 300K+ — TypeScript + full-stack live coding (GraphQL, React, Docker); cited by Better Stack
     'lama dev',                  # 500K+ — full-stack MERN project builds; fills "build a real production app" gap
+    'hyperplexed',               # 600K+ — CSS/JS animation clones; dev.to + RGB Studios top-frontend list
+    'matt pocock',               # 150K+ — Total TypeScript; type-system authority; cited by Microsoft Learn + DEV
+    'jonas schmedtmann',         # 200K+ — HTML/CSS/JS fundamentals; top-10 frontend lists 2026
 
     # ── Data Science / ML / AI ───────────────────────────────────────────────
     'statquest with josh starmer',  # Ex-UNC researcher, math/ML visuals
@@ -78,6 +81,13 @@ PREFERRED_CHANNELS = {
     'jeremy howard',             # 145K — fast.ai founder; top-down practical deep learning; cited by KDnuggets
     'hugging face',              # 250K+ — Official Hugging Face; transformers, open-source models, NLP
     'nicholas renotte',          # 600K+ — computer vision (YOLO), NLP, pose estimation, hands-on AI projects
+    'ai jason',                  # 130K+ — Jason Zhou; applied LLM app builds, RAG pipelines, agents
+    'data independent',          # 90K — Greg Kamradt; practical LangChain/RAG, referenced in LangChain docs
+    'matthew berman',            # 400K+ — LLM benchmarking, local models, agent frameworks
+    'all about ai',              # 130K+ — Kris Ograbek; prompt engineering + GPT API
+    'james briggs',              # 90K — Pinecone DevRel; LangChain, vector DB (authoritative)
+    'sam witteveen',             # 100K+ — LangChain deep dives, agent architectures
+    'ai anytime',                # 90K — LlamaIndex + RAG implementations (authoritative)
 
     # ── Cybersecurity ────────────────────────────────────────────────────────
     'the cyber mentor',          # TCM Security, ethical hacking, OSCP prep
@@ -99,6 +109,11 @@ PREFERRED_CHANNELS = {
     'hak5',                      # 1.1M — Darren Kitchen; hardware hacking, WiFi security, physical pentesting tools
     'malwaretech',               # 450K+ — Marcus Hutchins; advanced malware analysis, threat intel, reverse engineering
     'insiderphd',                # 280K+ — Katie Paxton-Fear (PhD); web hacking, bug bounty, OSCP prep; cited by PowerDMARC
+    'gynvael coldwind',          # 130K+ — exploit dev, CTF, reverse engineering; r/netsec recurring
+    'pwn function',              # 120K+ — crypto / AppSec fundamentals; Feedspot + r/AskNetsec
+    's4vitar',                   # 500K+ — Spanish red team / OSCP; r/hacking + r/oscp cited
+    'offensive security',        # 90K+ — official OSCP / exploit resources
+    'stacksmashing',             # 200K+ — hardware + mobile RE; cited by Hackaday
 
     # ── Mobile Development ───────────────────────────────────────────────────
     'flutter',                   # Google's official Flutter channel
@@ -115,6 +130,10 @@ PREFERRED_CHANNELS = {
     'coding with mitch',         # 190K+ — project-based Android from scratch (Instagram, Maps clones)
     'android developers',        # 1M+ — Official Google Android; MAD Skills, Compose, performance
     'stevdza-san',               # Jetpack Compose beginner → advanced; animations, navigation, custom UI
+    'paul hudson',               # 180K+ — Hacking With Swift; Swift / SwiftUI standard; Swift.org cited
+    'william candillon',         # 136K — "Can it be done in React Native?"; reanimated / skia deep dives
+    'james montemagno',          # 45K — Microsoft PM; core .NET MAUI / Xamarin voice (authoritative)
+    'azamsharp',                 # 55K — SwiftUI / iOS architecture; r/iOSProgramming resource threads
 
     # ── Game Development ─────────────────────────────────────────────────────
     'unity',                     # Official Unity Technologies
@@ -130,6 +149,13 @@ PREFERRED_CHANNELS = {
     'the coding train',          # 1.5M+ — Daniel Shiffman (NYU); p5.js, creative coding, algorithms visualized
     'jason weimann',             # 150K+ — Unity C# with design patterns, testing, professional code quality
     'clear code',                # 200K+ — dedicated Godot 4 tutorials; cited by GodotAcademy as top resource
+    'acerola',                   # 280K+ — shader programming, graphics techniques; r/GraphicsProgramming cited
+    'freya holmer',              # 450K+ — math for games, shader deep dives; Shadertoy + r/gamedev top
+    'simondev',                  # 280K+ — Three.js / graphics programming; r/GraphicsProgramming
+    'gorka games',               # 320K+ — Unreal 5 tutorials; r/unrealengine wiki
+    'ryan laley',                # 80K+ — Unreal Blueprint / C++; r/unrealengine cited
+    'blender guru',              # 3M+ — Blender for 3D / game assets; Blender.org cited
+    'grant abbitt',              # 600K+ — low-poly game art in Blender; r/blender + r/gamedev
 
     # ── Backend Development ───────────────────────────────────────────────────
     'amigoscode',                # Spring Boot, Java, microservices, Docker
@@ -138,6 +164,7 @@ PREFERRED_CHANNELS = {
     'java brains',               # 500K+ — Koushik Kothagal; Spring Boot, Security, reactive Java; Javarevisited #1 Spring educator
     'java techie',               # 186K — Spring WebFlux, Spring Cloud, microservices; reactive/cloud-native backend
     'stephane maarek',           # 250K+ — Apache Kafka authority + AWS SA; cited by Feedspot as definitive Kafka educator
+    'confluent developers',      # 60K+ — Tim Berglund; Kafka canonical (authoritative)
 
     # ── DevOps / Cloud ────────────────────────────────────────────────────────
     'techworld with nana',       # 900K — best DevOps from-scratch channel
@@ -152,6 +179,10 @@ PREFERRED_CHANNELS = {
     'john savill\'s technical training',  # 250K+ — Microsoft Principal Engineer; deep Azure AD, networking; fills Azure gap
     'cncf',                      # 150K+ — Official Cloud Native Computing Foundation; KubeCon talks, cloud-native roadmap
     'cloud with raj',            # 200K+ — GCP-specific hands-on tutorials; cited as top practical Google Cloud channel
+    'hashicorp',                 # 60K+ — official Terraform / Vault / Consul (authoritative)
+    'that devops guy',           # 110K+ — Kubernetes / GitOps practical; r/devops weekly cited
+    'just me and opensource',    # 100K+ — Kubernetes operators + Go; r/kubernetes cited
+    'anton putra',               # 70K+ — cloud benchmarks (EKS vs GKE); r/devops + HN cited (authoritative)
 
     # ── Algorithms / Data Structures / CS Theory ─────────────────────────────
     'mit opencourseware',        # MIT official — university-level rigour
@@ -169,6 +200,13 @@ PREFERRED_CHANNELS = {
     'nick white',                # LeetCode problem breakdowns; clear explanations for interview prep
     'cs dojo',                   # 1.92M — YK Sugi (ex-Google); CS fundamentals + interview prep; cited by AlgoCademy
     'clement mihailescu',        # 275K+ — AlgoExpert creator; FAANG strategies + live walkthroughs
+    'colin galen',               # Codeforces IGM; CP editorials (Codeforces blog 78967 — authoritative)
+    'secondthread',              # Codeforces IGM; post-contest walkthroughs (authoritative)
+    'aditya verma',              # 280K+ — definitive DP playlist; LeetCode discuss cited
+    'hello interview',           # 200K+ — ex-FAANG system-design mocks
+    'arpit bhayani',             # 250K+ — "Asli Engineering"; system design + DB + Python internals
+    'kevin naughton jr',         # 170K+ — LeetCode / CP patterns; interview prep
+    'rachit jain',               # 110K+ — CP patterns; Codeforces-adjacent
 
     # ── UI/UX Design ─────────────────────────────────────────────────────────
     'figma',                     # Official Figma channel
@@ -189,6 +227,10 @@ PREFERRED_CHANNELS = {
     'learn linux tv',            # 500K+ — Jay LaCroix; Linux admin, server setup, distro reviews; fills sysadmin gap
     'distrotube',                # 300K+ — Derek Taylor; Linux distributions, tiling WMs, daily-use workflows
     'the linux experiment',      # 300K+ — Nick; weekly Linux news, distro comparisons, practical tips
+    'luke smith',                # 350K+ — Arch, suckless, shell scripting; r/linux + r/unixporn cited
+    'mental outlaw',             # 600K+ — privacy / security Linux; r/linux
+    'brodie robertson',          # 180K+ — Linux news / kernel; r/linux daily threads
+    'lawrence systems',          # 400K+ — pfSense / FreeBSD / networking; r/homelab + r/PFSENSE
 
     # ── Filipino / Tagalog educators (PH-focused — aligns with CCS audience) ─
     'sdpt solutions',            # PH — Java/Python/MySQL/mobile in Tagalog
@@ -200,6 +242,11 @@ PREFERRED_CHANNELS = {
     'coding kuya',               # PH — IT career advice, industry trends, how to become a programmer
     'programming ph',            # PH — Filipino programming community tutorials and advice
     'rem lampa',                 # PH — FreeCodeCamp Manila Community Leader; live IT discussions for Filipinos
+    'kuya chris',                # PH — Tagalog full-stack (Laravel, React, PHP); "Web Developers Philippines" FB
+    'code with tadz',            # PH — Flutter, Firebase, mobile dev in Taglish; FilDev Discord
+    'jhay-ar de guzman',         # PH — Tagalog Android / Java / Kotlin; "Pinoy Programmers" FB group
+    'jreborn ph',                # PH — C# / .NET and game dev in Tagalog; niche but well-regarded in PH indie dev
+    'kodego ph',                 # PH bootcamp; structured JS / React in Taglish (TESDA-aligned)
 
     # ── Deeper DSA / Algorithms ──────────────────────────────────────────────
     'tushar roy - coding made simple',   # DSA, system design, FAANG prep
@@ -211,6 +258,14 @@ PREFERRED_CHANNELS = {
     'jon gjengset',              # Rust advanced — "Crust of Rust"
     'low level learning',        # C, OS internals, security
     'computerphile',             # CS theory — Nottingham academics
+    'ben eater',                 # 1.4M — 8-bit CPU + 6502 from scratch; gold-standard digital logic
+    'andreas kling',             # 70K — SerenityOS / Ladybird founder (Wikipedia — authoritative)
+    'jacob sorber',              # 200K+ — Clemson CS professor; C / systems / embedded
+    'mike shah',                 # 60K — Yale lecturer; Modern C++ (isocpp.org endorsed — authoritative)
+    'casey muratori',            # 100K+ — Handmade Hero; games-from-scratch, OS-level
+    'george hotz',               # 600K+ — tinygrad, ML compilers, reverse engineering
+    'nir lichtman',              # 100K+ — build OS / shell / Git from scratch
+    'dave\'s garage',            # 900K+ — ex-Microsoft engineer; Windows internals + assembly
 
     # ── AI / ML / LLM ────────────────────────────────────────────────────────
     'tech with tim',             # Python + AI projects
@@ -237,6 +292,11 @@ PREFERRED_CHANNELS = {
     'josh tried coding',         # Josh Comeau — frontend, animations
     'theo - t3.gg',              # modern full-stack JS/TS
     'jack herrington',           # React patterns, Next.js, TS
+    'syntax',                    # 180K+ — Wes Bos / Scott Tolinski podcast; heavy modern JS / Svelte coverage
+    'tailwind labs',             # 150K+ — official Tailwind; Adam Wathan tutorials
+    'sam selikoff',              # 90K+ — Tailwind + design-system patterns (authoritative per Tailwind team)
+    'google chrome developers',  # 600K+ — Core Web Vitals, Lighthouse from source
+    'vue mastery',               # 90K+ — official Vue partner; cited in Vue docs (authoritative)
 
     # ── Data Engineering / ETL / Pipelines ──────────────────────────────────
     'learn data engineering',    # 230K+ — Andreas Kretz; Airflow, dbt, Spark, Kafka; whiteboards + cookbook
@@ -252,6 +312,14 @@ PREFERRED_CHANNELS = {
     'arduino',                   # Official Arduino channel — hardware/firmware updates, educational builds
     'raspberry pi',              # 300K+ — Official Raspberry Pi Foundation; hardware tutorials, SBC projects
     'eevblog',                   # 900K+ — Dave Jones; electronics teardowns, circuit design; Feedspot #1 electronics
+    'phil\'s lab',               # 240K+ — PCB design, STM32, DSP; r/embedded + r/PrintedCircuitBoard top
+    'robert feranec',            # 160K+ — high-speed PCB design; Altium + r/PrintedCircuitBoard cited
+    'the signal path',           # 230K+ — RF / microwave teardowns; EEVblog forum + r/rfelectronics
+    'w2aew',                     # 180K+ — Alan Wolke; analog electronics / oscilloscopes; EEVblog + Hackaday
+    'articulated robotics',      # 150K+ — ROS2 robotics; r/ROS pinned resources
+    'james bruton',              # 800K+ — robotics builds; Hackaday-featured
+    'great scott!',              # 3M+ — electronics fundamentals; r/AskElectronics wiki
+    'electroboom',               # 5M+ — electronics theory with humor; r/ElectricalEngineering
 
     # ── Database Internals ───────────────────────────────────────────────────
     'cmu database group',        # Andy Pavlo (CMU) — graduate-level DB internals, query processing, storage
@@ -290,6 +358,63 @@ PREFERRED_CHANNELS = {
     'google developers',         # 1M+ — Official Google; Flutter, TensorFlow, Web APIs, Firebase, Android
     'jetbrains',                 # 500K+ — Official JetBrains; Kotlin, IntelliJ tips, IDE workflows
     'microsoft developer',       # 500K+ — Official Microsoft; C#/.NET, VS Code, Azure, Copilot
+
+    # ── Python (advanced — beyond Corey Schafer / Sentdex / Tech With Tim) ──
+    'mcoding',                   # 220K+ — CPython internals, performance deep dives
+    'real python',               # 270K+ — Official Real Python channel
+    'anthony writes code',       # 90K — Anthony Sottile; pre-commit / Stripe core maintainer (authoritative)
+
+    # ── Testing / QA / Test Automation ───────────────────────────────────────
+    'automation step by step',   # 400K+ — Raghav Pal; Selenium/Cypress/Playwright; testmu.ai #1
+    'execute automation',        # 82K+ — Karthik KK; Playwright C#, SpecFlow, API testing (authoritative)
+    'the testing academy',       # 80K+ — Pramod Dutta; Cucumber/Playwright + SDET career
+    'letcode',                   # 100K+ — Koushik; visually-rich Selenium/Playwright/Cypress
+
+    # ── PHP / Laravel ────────────────────────────────────────────────────────
+    'laracasts',                 # 260K+ — Jeffrey Way; #1 in every Laravel listicle (freek.dev, Kinsta)
+    'laraveldaily',              # 110K+ — Povilas Korop; Laravel core contributor (authoritative)
+    'codecourse',                # 140K+ — modern PHP / Laravel / REST APIs; freek.dev top-25
+    'caleb porzio',              # 80K+ — creator of Livewire + AlpineJS (authoritative)
+    'andrew schmelyun',          # 80K+ — advanced Laravel + Docker; Ash Allen top-25
+
+    # ── Ruby / Rails ─────────────────────────────────────────────────────────
+    'gorails',                   # 75K+ — Chris Oliver; THE Rails screencast; Feedspot/Stackify #1
+    'drifting ruby',             # 20K+ — only other credible Rails screencast (authoritative)
+
+    # ── .NET / C# ────────────────────────────────────────────────────────────
+    'nick chapsas',              # 230K+ — weekly .NET ecosystem updates; gaudion.dev #1
+    'iam tim corey',             # 400K+ — Microsoft MVP; comprehensive C# (every .NET list)
+    'raw coding',                # 65K+ — ASP.NET Core deep internals (authoritative)
+
+    # ── Git / Version Control ────────────────────────────────────────────────
+    'the missing semester',      # 450K+ — MIT course; Git internals rigorously taught (authoritative)
+    'github',                    # 950K+ — official GitHub; Universe talks, Actions, Copilot
+
+    # ── Career / Soft Skills for Engineers ───────────────────────────────────
+    'rahul pandey',              # 75K+ — ex-Meta/Pinterest TL, Stanford lecturer, Taro founder (authoritative)
+
+    # ── Functional Programming ───────────────────────────────────────────────
+    'funfunfunction',            # 290K+ — Mattias P. Johansson; canonical FP intro in JS
+
+    # ── Data Analytics — Power BI, Tableau, Excel ────────────────────────────
+    'guy in a cube',             # 430K+ — canonical Power BI; Microsoft MVPs cited
+    'sqlbi',                     # 180K+ — Marco Russo / Alberto Ferrari; DAX canonical (authoritative)
+    'tableau tim',               # 80K+ — Tableau-certified; Tableau community cited (authoritative)
+    'excel is fun',              # 900K+ — Mike Girvin; canonical advanced Excel
+    'leila gharani',             # 2.5M — advanced Excel, Power Query; widely cited
+    'my online training hub',    # 700K+ — Mynda Treacy; Excel MVP
+
+    # ── International / Multilingual Educators ───────────────────────────────
+    'code with harry',           # 7M+ — Hindi/English MERN, DSA; heavily watched in SEA including PH
+    'anuj bhaiya',               # 300K+ — clean DSA / placement prep; PH competitive programming groups
+    'love babbar',               # 1M+ — 450 DSA sheet + interview prep; SEA CS community
+    'midudev',                   # 900K+ — top Spanish-lang JS / React; auto-translated captions
+    'fazt',                      # 800K+ — Peruvian full-stack (Node/Django/React); reliable EN subs
+    'nomad coders',              # 700K+ — Korean (Nico); React Native, Flutter, clones with EN subs
+    'hongpong',                  # 200K+ — Korean game / graphics (C++, Unity); PH game dev students
+    'mayuko',                    # 400K+ — ex-Intuit iOS engineer; Swift / SwiftUI + career
+    'ania kubow',                # 300K+ — project-based JS / React / game dev
+    'coder coder',               # 300K+ — Jessica Chan; HTML / CSS / JS fundamentals
 }
 
 
