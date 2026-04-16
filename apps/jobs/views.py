@@ -1,3 +1,4 @@
+import logging
 import time
 from django.utils import timezone
 from rest_framework import generics, permissions, status
@@ -6,6 +7,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from .models import JobListing, SavedJob
 from .serializers import JobListingSerializer, SavedJobSerializer
+
+logger = logging.getLogger(__name__)
 
 # Cooldown: don't retry the sync within 5 minutes of a failed attempt
 _last_sync_attempt: float = 0
@@ -102,6 +105,71 @@ class RecommendedJobsView(APIView):
         return Response(serializer.data)
 
 
+def _match_jobs_from_resume_text(resume_text: str) -> list:
+    """
+    Shared pipeline: Groq skill extraction → keyword tokenisation → JobListing
+    query → serialized list of up to 8 jobs, each annotated with match_terms.
+    Callers are responsible for validating the length contract appropriate to
+    their source.
+    """
+    # Ensure there are jobs in the DB to match against
+    _ensure_jobs_seeded()
+
+    from .groq_client import extract_resume_skills
+    extracted = extract_resume_skills(resume_text)
+
+    keywords = (
+        extracted.get('skills', []) +
+        extracted.get('roles', []) +
+        extracted.get('keywords', [])
+    )
+
+    base_qs = JobListing.objects.filter(is_active=True)
+
+    if keywords:
+        from django.db.models import Q
+        tokens = set()
+        for kw in keywords:
+            for word in str(kw).split():
+                w = word.strip()
+                if len(w) >= 3:
+                    tokens.add(w)
+
+        query = Q()
+        for token in tokens:
+            query |= (
+                Q(title__icontains=token) |
+                Q(description__icontains=token) |
+                Q(required_skills__icontains=token)
+            )
+
+        jobs = list(base_qs.filter(query)[:8])
+        if not jobs:
+            jobs = list(base_qs.order_by('-fetched_at')[:8])
+    else:
+        jobs = list(base_qs.order_by('-fetched_at')[:8])
+
+    # Compute which user keywords actually appear in each job (for UI explanations)
+    def matched_terms_for(job):
+        haystack = ' '.join([
+            job.title or '',
+            job.description or '',
+            str(job.required_skills or ''),
+        ]).lower()
+        seen = []
+        for kw in keywords:
+            kw_str = str(kw).strip()
+            if kw_str and kw_str.lower() in haystack and kw_str not in seen:
+                seen.append(kw_str)
+        return seen[:6]  # cap at 6 to keep UI clean
+
+    serializer = JobListingSerializer(jobs, many=True)
+    results = []
+    for job_data, job_obj in zip(serializer.data, jobs):
+        results.append({**job_data, 'match_terms': matched_terms_for(job_obj)})
+    return results
+
+
 class RecommendFromResumeView(APIView):
     """POST /api/jobs/recommend-from-resume/ — Top 8 jobs matched to an uploaded resume PDF."""
     permission_classes = [permissions.IsAuthenticated]
@@ -113,63 +181,61 @@ class RecommendFromResumeView(APIView):
                 {'detail': 'Resume text too short. Please upload a valid resume PDF.'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        return Response(_match_jobs_from_resume_text(resume_text))
 
-        # Ensure there are jobs in the DB to match against
-        _ensure_jobs_seeded()
 
-        from .groq_client import extract_resume_skills
-        extracted = extract_resume_skills(resume_text)
+class RecommendFromResumeIdView(APIView):
+    """
+    POST /api/jobs/recommend-from-resume-id/
+    Body: { "resume_id": int }
+    Returns the same shape as RecommendFromResumeView but uses a stored resume
+    as the source — the resume's structured content is flattened to text via
+    the resumes app's _extract_resume_text helper, then fed through the
+    shared matching pipeline.
+    """
+    permission_classes = [permissions.IsAuthenticated]
 
-        keywords = (
-            extracted.get('skills', []) +
-            extracted.get('roles', []) +
-            extracted.get('keywords', [])
-        )
+    def post(self, request):
+        raw_id = request.data.get('resume_id')
+        try:
+            resume_id = int(raw_id)
+        except (TypeError, ValueError):
+            return Response(
+                {'detail': 'resume_id is required and must be an integer.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        base_qs = JobListing.objects.filter(is_active=True)
+        from apps.resumes.models import Resume
+        from apps.resumes.views import _extract_resume_text
 
-        if keywords:
-            from django.db.models import Q
-            tokens = set()
-            for kw in keywords:
-                for word in str(kw).split():
-                    w = word.strip()
-                    if len(w) >= 3:
-                        tokens.add(w)
+        # Queryset scoped to request.user — an unowned or non-existent id
+        # returns the same 404 (don't leak existence of other users' resumes).
+        try:
+            resume = Resume.objects.get(pk=resume_id, user=request.user)
+        except Resume.DoesNotExist:
+            return Response(
+                {'detail': 'Resume not found.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
 
-            query = Q()
-            for token in tokens:
-                query |= (
-                    Q(title__icontains=token) |
-                    Q(description__icontains=token) |
-                    Q(required_skills__icontains=token)
-                )
+        resume_text = _extract_resume_text(resume.content or {})
+        if len(resume_text) < 50:
+            return Response(
+                {'detail': 'This resume has too little content to match jobs. '
+                           'Add experience, skills, or a summary first.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-            jobs = list(base_qs.filter(query)[:8])
-            if not jobs:
-                jobs = list(base_qs.order_by('-fetched_at')[:8])
-        else:
-            jobs = list(base_qs.order_by('-fetched_at')[:8])
-
-        # Compute which user keywords actually appear in each job (for UI explanations)
-        def matched_terms_for(job):
-            haystack = ' '.join([
-                job.title or '',
-                job.description or '',
-                str(job.required_skills or ''),
-            ]).lower()
-            seen = []
-            for kw in keywords:
-                kw_str = str(kw).strip()
-                if kw_str and kw_str.lower() in haystack and kw_str not in seen:
-                    seen.append(kw_str)
-            return seen[:6]  # cap at 6 to keep UI clean
-
-        serializer = JobListingSerializer(jobs, many=True)
-        results = []
-        for job_data, job_obj in zip(serializer.data, jobs):
-            results.append({**job_data, 'match_terms': matched_terms_for(job_obj)})
-        return Response(results)
+        try:
+            return Response(_match_jobs_from_resume_text(resume_text))
+        except Exception:
+            logger.exception(
+                'recommend-from-resume-id failed for resume %s', resume_id,
+            )
+            return Response(
+                {'detail': 'Matching failed. Please try again.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
 
 class SavedJobListView(generics.ListAPIView):
