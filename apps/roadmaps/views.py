@@ -215,9 +215,15 @@ def fix_structure(request, roadmap_pk):
     except Roadmap.DoesNotExist:
         return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-    nodes = list(roadmap.nodes.order_by('node_order'))
+    _TRAILING_GLOBAL = {'final_assessment', 'certification'}
+    _TYPE_ORDER = {'skill': 0, 'assessment': 0, 'project': 1, 'final_assessment': 2, 'certification': 3}
+
+    all_nodes = list(roadmap.nodes.order_by('node_order'))
+    trailing = [n for n in all_nodes if n.node_type in _TRAILING_GLOBAL]
+    phase_nodes_all = [n for n in all_nodes if n.node_type not in _TRAILING_GLOBAL]
+
     phases, current = [], {'milestone': None, 'nodes': []}
-    for node in nodes:
+    for node in phase_nodes_all:
         if node.node_type == 'milestone':
             phases.append(current)
             current = {'milestone': node, 'nodes': []}
@@ -225,33 +231,35 @@ def fix_structure(request, roadmap_pk):
             current['nodes'].append(node)
     phases.append(current)
 
-    TYPE_ORDER = {'skill': 0, 'assessment': 0, 'project': 1, 'certification': 2}
+    # Move stray projects from earlier phases into the last (Build) phase
+    if len(phases) >= 2:
+        last_phase = phases[-1]
+        for i in range(len(phases) - 1):
+            stray_projects = [n for n in phases[i]['nodes'] if n.node_type == 'project']
+            if stray_projects:
+                phases[i]['nodes'] = [n for n in phases[i]['nodes'] if n.node_type != 'project']
+                last_phase['nodes'].extend(stray_projects)
 
-    # Work backwards so cascading fixes resolve in a single pass
-    for i in range(len(phases) - 1, 0, -1):
-        phase_nodes = phases[i]['nodes']
-        has_cert    = any(n.node_type == 'certification' for n in phase_nodes)
-        has_project = any(n.node_type == 'project' for n in phase_nodes)
-
-        if has_cert:
-            stray = [n for n in phase_nodes if n.node_type != 'certification']
-            if stray:
-                phases[i - 1]['nodes'].extend(stray)
-                phases[i]['nodes'] = [n for n in phase_nodes if n.node_type == 'certification']
-        elif has_project:
-            stray = [n for n in phase_nodes if n.node_type in ('skill', 'assessment')]
-            if stray:
-                phases[i - 1]['nodes'].extend(stray)
-                phases[i]['nodes'] = [n for n in phase_nodes if n.node_type not in ('skill', 'assessment')]
+    # Move stray skills/assessments out of the last phase back to the previous one
+    if len(phases) >= 2:
+        last_phase = phases[-1]
+        stray_skills = [n for n in last_phase['nodes'] if n.node_type in ('skill', 'assessment')]
+        if stray_skills:
+            phases[-2]['nodes'].extend(stray_skills)
+            last_phase['nodes'] = [n for n in last_phase['nodes'] if n.node_type not in ('skill', 'assessment')]
 
     for phase in phases:
-        phase['nodes'].sort(key=lambda n: TYPE_ORDER.get(n.node_type, 0))
+        phase['nodes'].sort(key=lambda n: _TYPE_ORDER.get(n.node_type, 0))
 
     flat = []
     for phase in phases:
         if phase['milestone']:
             flat.append(phase['milestone'])
         flat.extend(phase['nodes'])
+
+    # Trailing global nodes: final_assessment first, then certifications
+    trailing_sorted = sorted(trailing, key=lambda n: _TYPE_ORDER.get(n.node_type, 99))
+    flat.extend(trailing_sorted)
 
     for i, node in enumerate(flat):
         if node.node_order != i:
