@@ -20,4 +20,8 @@ urlpatterns = [
          views.submit_assessment, name='assessment-submit'),
     path('<int:roadmap_pk>/nodes/<int:node_pk>/resources/<int:resource_pk>/unlock/',
          views.unlock_video_watch, name='video-watch-unlock'),
+    path('<int:roadmap_pk>/final-assessment/',
+         views.start_final_assessment, name='final-assessment-start'),
+    path('<int:roadmap_pk>/final-assessment/<int:session_pk>/submit/',
+         views.submit_final_assessment, name='final-assessment-submit'),
 ]

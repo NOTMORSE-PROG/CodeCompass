@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from apps.accounts.permissions import IsStudent
 from apps.ai_assistant.permissions import FromRoadmapScopedSession
 from apps.gamification.engine import award_xp
-from .models import Roadmap, RoadmapNode, NodeResource, AssessmentSession, VideoWatchUnlock
+from .models import Roadmap, RoadmapNode, NodeResource, AssessmentSession, VideoWatchUnlock, FinalAssessmentSession
 from .serializers import RoadmapSerializer, RoadmapListSerializer, RoadmapNodeSerializer
 
 # ---------------------------------------------------------------------------
@@ -47,13 +47,16 @@ def _to_int(val, default, min_val=1, max_val=None):
         return default
 
 
-_VALID_NODE_TYPES = {'skill', 'assessment', 'project', 'certification'}
+_VALID_NODE_TYPES = {'skill', 'assessment', 'project', 'certification', 'final_assessment'}
 _NODE_TYPE_ALIASES = {
     'core_skill': 'skill', 'hard_skill': 'skill', 'knowledge': 'skill',
     'topic': 'skill', 'lesson': 'skill', 'skill_node': 'skill',
     'hands_on': 'project', 'build': 'project', 'capstone': 'project',
     'cert': 'certification', 'certificate': 'certification',
     'quiz': 'assessment', 'test': 'assessment',
+    'final': 'final_assessment', 'final_quiz': 'final_assessment',
+    'capstone_quiz': 'final_assessment', 'finale': 'final_assessment',
+    'roadmap_assessment': 'final_assessment',
 }
 
 
@@ -339,6 +342,22 @@ def update_node_status(request, roadmap_pk, node_pk):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
+        # Gate: certifications require passing the Final Assessment first.
+        # Scoped — only roadmaps that actually have a final_assessment node enforce this,
+        # so legacy roadmaps (no final_assessment) are unaffected.
+        if (node.node_type == RoadmapNode.NodeType.CERTIFICATION
+                and new_status in ('in_progress', 'completed')):
+            has_final = node.roadmap.nodes.filter(node_type='final_assessment').exists()
+            if has_final:
+                passed = FinalAssessmentSession.objects.filter(
+                    roadmap=node.roadmap, user=request.user, passed=True
+                ).exists()
+                if not passed:
+                    return Response(
+                        {'detail': 'Pass the Final Assessment to unlock Certifications.'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
         node.status = new_status
         if new_status == 'completed' and not node.completed_at:
             node.completed_at = timezone.now()
@@ -484,66 +503,204 @@ def submit_assessment(request, roadmap_pk, node_pk, resource_pk, session_pk):
     total = len(questions)
     score = round((correct_count / total) * 100) if total else 0
 
-    # Research-backed pass thresholds by topic and difficulty:
-    # - NTNU mastery learning (introductory programming): 75%
-    # - PMC systematic review (formative e-learning): 70–75% standard
-    # - ACM TOCE / Stankov 2023: lower threshold for high-cognitive-load topics
-    # - MDPI 2021: 75% for security/networking (high-stakes domain)
     node = session.resource.node
-    title_lower = node.title.lower()
-    difficulty = node.difficulty or 2
-    user_role = getattr(session.user, 'role', 'undergraduate')
+    pass_threshold = _compute_pass_threshold(node.title, node.difficulty or 2, session.user)
+    passed = score >= pass_threshold
+
+    session.passed = passed
+    session.score = score
+    session.save(update_fields=['passed', 'score'])
+
+    return Response({
+        'passed': passed,
+        'score': score,
+        'passThreshold': pass_threshold,
+        'correctCount': correct_count,
+        'totalQuestions': len(questions),
+        'results': results,
+    })
+
+
+def _compute_pass_threshold(title: str, difficulty: int, user) -> int:
+    """Research-backed pass threshold by topic and difficulty.
+    Shared by per-video quiz submission and final assessment submission."""
+    title_lower = (title or '').lower()
+    user_role = getattr(user, 'role', 'undergraduate')
 
     if any(k in title_lower for k in (
         'automata', 'formal language', 'compiler', 'computability', 'turing machine',
         'complexity theory', 'np-complete', 'lambda calculus',
     )):
-        # Abstract/theoretical CS — highest cognitive load; partial mastery is meaningful
         base_threshold = 62
     elif any(k in title_lower for k in (
         'machine learning', 'deep learning', 'neural network', 'natural language processing',
         'computer vision', 'reinforcement learning', 'data science', 'statistics',
         'probability', 'linear regression', 'logistic regression',
     )):
-        # Data science / ML — statistical ambiguity makes 100% correctness unrealistic
         base_threshold = 65
     elif any(k in title_lower for k in (
         'dynamic programming', 'graph algorithm', 'network flow', 'minimum spanning tree',
         'advanced algorithm', 'computational geometry',
     )):
-        # Advanced DSA — complex reasoning required
         base_threshold = 68
     elif any(k in title_lower for k in (
         'security', 'network', 'hacking', 'cyber', 'penetration', 'firewall',
         'threat', 'exploit', 'malware', 'forensic', 'cryptography', 'ethical hacking',
     )):
-        # Security / networking — scenario-based; real-world consequences
         base_threshold = 72
     else:
-        # Standard topics: web dev, databases, mobile, game dev, devops, backend, etc.
         base_threshold = 75
 
-    # Incoming students: diagnostic tool, not a gatekeeping mechanism — much lower bar
     if user_role == 'incoming_student':
         base_threshold = max(60, base_threshold - 12)
     else:
-        # Year 1 students are still in foundation phase — drop threshold slightly
         try:
-            yl = session.user.student_profile.year_level or ''
+            yl = user.student_profile.year_level or ''
             if yl in ('1st', 'incoming'):
                 base_threshold = max(62, base_threshold - 5)
         except Exception:
             pass
-        # High difficulty nodes (4–5) use Evaluate-level questions — apply tolerance
         if difficulty >= 4:
             base_threshold = max(62, base_threshold - 5)
 
-    pass_threshold = base_threshold
+    return base_threshold
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def start_final_assessment(request, roadmap_pk):
+    """
+    POST /api/roadmaps/{id}/final-assessment/
+    Generate a fresh 10-question Final Assessment covering the roadmap's
+    skill and project content across all phases. Returns sessionId + questions
+    (without correct answers).
+    """
+    try:
+        roadmap = Roadmap.objects.get(pk=roadmap_pk, user=request.user)
+    except Roadmap.DoesNotExist:
+        return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Reject if roadmap doesn't have a final_assessment node
+    final_node = roadmap.nodes.filter(node_type='final_assessment').first()
+    if not final_node:
+        return Response(
+            {'detail': 'This roadmap does not have a Final Assessment.'},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    user_role = getattr(request.user, 'role', 'undergraduate')
+    program = 'undecided'
+    year_level = ''
+    if user_role == 'undergraduate':
+        try:
+            sp = request.user.student_profile
+            program = sp.program or 'undecided'
+            year_level = sp.year_level or ''
+        except Exception:
+            pass
+
+    from apps.ai_assistant.groq_client import generate_final_assessment
+    try:
+        questions = generate_final_assessment(
+            roadmap=roadmap,
+            difficulty=final_node.difficulty or 3,
+            user_role=user_role,
+            program=program,
+            year_level=year_level,
+        )
+    except Exception as e:
+        return Response(
+            {'detail': f'Failed to generate final assessment: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+    session = FinalAssessmentSession.objects.create(
+        user=request.user,
+        roadmap=roadmap,
+        questions_json=questions,
+    )
+
+    client_questions = [
+        {'question': q['question'], 'options': q['options']}
+        for q in questions
+    ]
+
+    return Response({'sessionId': session.id, 'questions': client_questions})
+
+
+@api_view(['POST'])
+@permission_classes([permissions.IsAuthenticated])
+def submit_final_assessment(request, roadmap_pk, session_pk):
+    """
+    POST /api/roadmaps/{id}/final-assessment/{session_id}/submit/
+    Score submitted answers. On pass, unlock all certification nodes on the roadmap.
+    """
+    try:
+        session = FinalAssessmentSession.objects.get(
+            pk=session_pk,
+            user=request.user,
+            roadmap__pk=roadmap_pk,
+        )
+    except FinalAssessmentSession.DoesNotExist:
+        return Response({'detail': 'Session not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    if session.passed is not None:
+        return Response({'detail': 'Session already submitted.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    answers = request.data.get('answers', {})
+    questions = session.questions_json
+    correct_count = 0
+    results = []
+
+    for i, q in enumerate(questions):
+        submitted = answers.get(str(i))
+        is_correct = submitted == q['correct']
+        if is_correct:
+            correct_count += 1
+        distractors = q.get('distractors', {})
+        results.append({
+            'correct': is_correct,
+            'yourAnswer': submitted,
+            'correctAnswer': q['correct'],
+            'explanation': q.get('explanation', ''),
+            'distractor': distractors.get(submitted, '') if not is_correct and submitted else '',
+        })
+
+    total = len(questions)
+    score = round((correct_count / total) * 100) if total else 0
+
+    final_node = session.roadmap.nodes.filter(node_type='final_assessment').first()
+    difficulty = (final_node.difficulty if final_node else 3) or 3
+    title = session.roadmap.title
+    pass_threshold = _compute_pass_threshold(title, difficulty, session.user)
     passed = score >= pass_threshold
 
     session.passed = passed
     session.score = score
     session.save(update_fields=['passed', 'score'])
+
+    # On pass: unlock certification nodes and mark the final_assessment node complete.
+    if passed:
+        with transaction.atomic():
+            if final_node and final_node.status != 'completed':
+                final_node.status = 'completed'
+                final_node.completed_at = timezone.now()
+                final_node.save(update_fields=['status', 'completed_at'])
+                from apps.gamification.models import XPEvent as _XPEvent
+                if not _XPEvent.objects.filter(
+                    user=request.user, event_type='node_completed', reference_id=final_node.id
+                ).exists():
+                    award_xp(
+                        request.user,
+                        'node_completed',
+                        final_node.id,
+                        f'Passed Final Assessment: {session.roadmap.title}',
+                        xp_override=final_node.xp_reward,
+                    )
+            session.roadmap.nodes.filter(
+                node_type='certification', status='locked'
+            ).update(status='available')
+            session.roadmap.recalculate_completion()
 
     return Response({
         'passed': passed,

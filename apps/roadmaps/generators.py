@@ -26,18 +26,28 @@ def _coerce_difficulty(v):
         return max(1, min(5, _DIFF_WORDS.get(str(v).lower().strip(), 1)))
 
 
-_TYPE_ORDER = {'skill': 0, 'assessment': 0, 'project': 1, 'certification': 2}
+_TYPE_ORDER = {'skill': 0, 'assessment': 0, 'project': 1, 'final_assessment': 2, 'certification': 3}
+
+# Node types that live globally after all phase milestones — they must not be
+# wrapped inside a phase, and _fix_phase_structure should not relocate them.
+_TRAILING_GLOBAL_TYPES = {'final_assessment', 'certification'}
 
 
 def _fix_phase_structure(nodes_data):
     """
-    Enforces phase purity: cert phases contain ONLY certifications,
-    project phases contain ONLY projects.
-    Works backwards so cascading fixes resolve in a single pass
-    (e.g. skill in Phase 4 → Phase 3 → Phase 2 without needing multiple runs).
+    Enforces phase purity for the three real phases (Foundations, Core Skills, Build):
+    project phases contain ONLY projects; skill phases contain ONLY skills.
+    final_assessment and certification nodes are treated as global trailing nodes —
+    they are collected out of any phase groupings and emitted at the end in a fixed order
+    (final_assessment first, then certifications), so the AI is forgiven for mis-placing them.
     """
+    # First pass: pull out all trailing global nodes in document order
+    trailing = [n for n in nodes_data if n.get('node_type') in _TRAILING_GLOBAL_TYPES]
+    phase_nodes_all = [n for n in nodes_data if n.get('node_type') not in _TRAILING_GLOBAL_TYPES]
+
+    # Build phase groups from what's left (skills, projects, milestones, assessments)
     phases, current = [], {'milestone': None, 'nodes': []}
-    for node in nodes_data:
+    for node in phase_nodes_all:
         if node.get('node_type') == 'milestone':
             phases.append(current)
             current = {'milestone': node, 'nodes': []}
@@ -45,19 +55,12 @@ def _fix_phase_structure(nodes_data):
             current['nodes'].append(node)
     phases.append(current)
 
+    # Fix phase purity: project phases contain ONLY projects
     for i in range(len(phases) - 1, 0, -1):
         phase_nodes = phases[i]['nodes']
-        has_cert    = any(n.get('node_type') == 'certification' for n in phase_nodes)
         has_project = any(n.get('node_type') == 'project' for n in phase_nodes)
 
-        if has_cert:
-            # Cert phase — move every non-cert node to the previous phase
-            stray = [n for n in phase_nodes if n.get('node_type') != 'certification']
-            if stray:
-                phases[i - 1]['nodes'].extend(stray)
-                phases[i]['nodes'] = [n for n in phase_nodes if n.get('node_type') == 'certification']
-        elif has_project:
-            # Project phase — move any skill/assessment nodes to the previous phase
+        if has_project:
             stray = [n for n in phase_nodes if n.get('node_type') in ('skill', 'assessment')]
             if stray:
                 phases[i - 1]['nodes'].extend(stray)
@@ -71,6 +74,13 @@ def _fix_phase_structure(nodes_data):
         if phase['milestone']:
             result.append(phase['milestone'])
         result.extend(phase['nodes'])
+
+    # Sort trailing global nodes: final_assessment(s) first, then certifications,
+    # preserving relative order within each type.
+    trailing_sorted = sorted(
+        trailing, key=lambda n: _TYPE_ORDER.get(n.get('node_type', 'skill'), 99)
+    )
+    result.extend(trailing_sorted)
     return result
 
 
@@ -93,8 +103,11 @@ def save_roadmap_from_ai(roadmap: Roadmap, ai_data: dict) -> Roadmap:
     # The AI always leads with a milestone (Phase 1), which has no UI action.
     # We auto-complete milestones in the unlock chain, so we need the first
     # non-milestone node to be 'available' at creation time too.
+    # Skip final_assessment and certification when picking the "first non-milestone"
+    # so those stay locked until their prerequisites are met.
     first_non_milestone = next(
-        (i for i, n in enumerate(nodes_data) if n.get('node_type') != 'milestone'),
+        (i for i, n in enumerate(nodes_data)
+         if n.get('node_type') not in ('milestone', 'final_assessment', 'certification')),
         None,
     )
     initially_available = {0, first_non_milestone} - {None}
@@ -105,7 +118,11 @@ def save_roadmap_from_ai(roadmap: Roadmap, ai_data: dict) -> Roadmap:
         node_type = node_data.get('node_type', 'skill')
         # Milestones that are initially available are marked as completed
         # immediately (they're phase markers, not tasks).
-        if i in initially_available and node_type == 'milestone':
+        # Certifications and final_assessment always start locked — they unlock
+        # based on the Final Assessment pass result, not by sequence position.
+        if node_type in ('certification', 'final_assessment'):
+            initial_status = 'locked'
+        elif i in initially_available and node_type == 'milestone':
             initial_status = 'completed'
         elif i in initially_available:
             initial_status = 'available'

@@ -1012,7 +1012,7 @@ CRITICAL RULES — follow these exactly:
    Phase 1 — Foundations: Introduction to Computer Systems, Basic Networking Concepts
    Phase 2 — Core Skills: Introduction to Programming (Python), Web Basics (HTML/CSS), Data Storage & Management
    Phase 3 — Build: one beginner project (e.g., personal website or simple Python script app)
-   Phase 4 — Credentials: CompTIA ITF+ or Harvard CS50x or Microsoft Learn Foundations of Coding
+   Then one final_assessment node, then free certifications: CompTIA ITF+ or Harvard CS50x or Microsoft Learn Foundations of Coding
    Do NOT specialize into Cybersecurity, AI, advanced networking, or any single tech stack.
    Keep it broad — this path is a launchpad, not a specialization.
 
@@ -1025,12 +1025,15 @@ CRITICAL RULES — follow these exactly:
    Phase 1 — Foundations   (1 milestone + 2-3 nodes, node_type: "skill" ONLY)
    Phase 2 — Core Skills   (1 milestone + 3-4 nodes, node_type: "skill" ONLY)
    Phase 3 — Build         (1 milestone + 1-3 nodes, node_type: "project" ONLY — NO certifications here)
-   Phase 4 — Credentials   (1 milestone + 1-2 nodes, node_type: "certification" ONLY — NO projects here)
+   Then AFTER Phase 3 (no milestone header for these trailing nodes):
+     - EXACTLY ONE node with node_type: "final_assessment" (parent_id = the last Build-phase project)
+     - 1-2 nodes with node_type: "certification" (parent_id = the final_assessment node)
 
-   STRICT TYPE RULE: Phase 3 must contain ONLY "project" nodes. Phase 4 must contain ONLY "certification" nodes.
+   STRICT TYPE RULE: Phase 3 must contain ONLY "project" nodes.
+   The final_assessment and certification nodes MUST NOT have a milestone wrapping them.
    NEVER mix projects and certifications in the same phase. Every node's node_type must match its phase.
 
-4. CERTIFICATIONS ONLY IN PHASE 4 — TIERED BY STUDENT LEVEL
+4. CERTIFICATIONS APPEAR AFTER THE FINAL ASSESSMENT — TIERED BY STUDENT LEVEL
    Never put certifications before the student has learned the skills.
    CRITICAL: Match certifications to the student's year_level and experience_level.
    Do NOT assign enterprise-level or paid high-stakes certs to beginners or incoming students.
@@ -1163,10 +1166,11 @@ CRITICAL RULES — follow these exactly:
      CompTIA Security+ | CompTIA Network+ | CISSP | CEH | Stanford MOOCs
      Any cert requiring a $200+ exam fee as the main requirement
 
-   Pick ONLY 1–2 free certifications per Phase 4. If you mention an optional paid upgrade, put it
-   in the node description text only — do NOT make the node itself a paid cert.
+   Pick ONLY 1–2 free certifications as the trailing certification nodes. If you mention an
+   optional paid upgrade, put it in the node description text only — do NOT make the node itself a paid cert.
 
-5. NO "assessment" node_type. Use only: milestone, skill, project, certification.
+5. NO "assessment" node_type — use "final_assessment" instead (exactly one per roadmap, after Phase 3).
+   Allowed node_type values: milestone, skill, project, final_assessment, certification.
 
 6. LINEAR CHAIN: each node's parent_id = the previous node's id (simple sequential chain).
 
@@ -1174,18 +1178,26 @@ CRITICAL RULES — follow these exactly:
    Prefer: "freeCodeCamp", "Traversy Media", "The Net Ninja", "CS50", "Corey Schafer"
 
 8. XP REWARDS:
-   milestone = 50  |  skill = 100-150  |  project = 250-350  |  certification = 200-400
+   milestone = 50  |  skill = 100-150  |  project = 250-350  |  final_assessment = 300-500  |  certification = 200-400
 
-9. Generate 14-18 nodes total.
+9. FINAL ASSESSMENT NODE:
+   - Exactly one node with node_type: "final_assessment"
+   - Title format: "Final Assessment — [Career Path]" (e.g., "Final Assessment — Web Development")
+   - Description: "A comprehensive 10-question quiz covering all skills and projects from this roadmap. Pass this assessment to unlock your certifications."
+   - estimated_hours: 1
+   - difficulty: 3
+   - No resources needed (quiz is auto-generated server-side)
 
-10. PERSONALIZATION CHECK before generating:
+10. Generate 14-18 nodes total.
+
+11. PERSONALIZATION CHECK before generating:
     - What is their experience level? → adjust difficulty and starting point
     - What is their recommended_path? → use the right tech stack
     - What is their learning_style? → mention it in project/skill descriptions
     - What is their career_goal? → frame the roadmap toward that goal
     - What is their year_level? → determines cert tier and skill depth
 
-11. REALISTIC estimated_hours — do NOT use the same value for every node:
+12. REALISTIC estimated_hours — do NOT use the same value for every node:
     Skill nodes (study + practice time, NOT just video length):
       difficulty 1 → 4–6h   (intro concept, simple exercises)
       difficulty 2 → 6–10h  (guided projects, small tasks)
@@ -1695,6 +1707,119 @@ def generate_video_assessment(
         return json.loads(raw)
     except json.JSONDecodeError:
         logger.error('[Groq] generate_video_assessment: invalid JSON. Raw: %.300s', raw)
+        return []
+
+
+def generate_final_assessment(
+    roadmap,
+    difficulty: int = 3,
+    user_role: str = 'undergraduate',
+    program: str = 'undecided',
+    year_level: str = '',
+) -> list:
+    """
+    Generate 10 MCQ questions for the roadmap's Final Assessment.
+
+    Unlike per-video assessments, this one covers all skill + project content
+    across every phase (Foundations, Core Skills, Build). No YouTube transcript
+    is used — the aggregated node content serves as the context.
+    """
+    import json
+
+    clamped = max(1, min(5, difficulty))
+    is_incoming = user_role == 'incoming_student'
+    effective_program = 'undecided' if is_incoming else (program or 'undecided')
+    staircase_key = 'incoming' if is_incoming else clamped
+    staircase_levels = _BLOOM_STAIRCASE[staircase_key]
+    bloom_staircase_text = '\n'.join(
+        f'  Q{i+1} → {level}' for i, level in enumerate(staircase_levels)
+    )
+    program_scope = _PROGRAM_SCOPE.get(effective_program, _PROGRAM_SCOPE['undecided'])
+
+    career_path = roadmap.career_path or ''
+    track_context = 'Apply general CS best practices for this topic.'
+    if career_path:
+        cp_lower = career_path.lower()
+        for keyword, hint in _TRACK_CONTEXT.items():
+            if keyword in cp_lower:
+                track_context = hint
+                break
+
+    year_display = year_level if year_level else ('Pre-college / Incoming' if is_incoming else 'Undergraduate')
+
+    # Aggregate skill + project content across all phases.
+    # Include milestone titles as phase headers so the AI sees the phase structure.
+    content_sections = []
+    current_phase = None
+    for node in roadmap.nodes.all().order_by('node_order'):
+        if node.node_type == 'milestone':
+            current_phase = node.title
+            content_sections.append(f'\n=== {current_phase} ===')
+        elif node.node_type in ('skill', 'project'):
+            content_sections.append(
+                f'• {node.title} [{node.node_type.upper()}]\n'
+                f'  {(node.description or "")[:400]}'
+            )
+    aggregated_content = '\n'.join(content_sections).strip()
+    if not aggregated_content:
+        aggregated_content = f'Roadmap: {roadmap.title}. Career path: {career_path}.'
+
+    transcript_section = (
+        'ROADMAP CONTENT (all skills and projects the student has learned across every phase):\n'
+        '"""\n'
+        f'{aggregated_content[:8000]}\n'
+        '"""\n\n'
+        'FINAL ASSESSMENT RULES — strictly enforced:\n'
+        '1. This is a CUMULATIVE assessment covering the entire roadmap above.\n'
+        '2. Distribute the 10 questions across all phases — do NOT focus only on one topic.\n'
+        '3. Each question must test a concept from one of the skill or project nodes listed.\n'
+        '4. Follow the Bloom\'s staircase: Q1 (easiest, from early phases) → Q10 (hardest, integrating multiple concepts).\n'
+        '5. Questions Q7-Q10 should require synthesizing across multiple phases (Evaluate / Create levels).'
+    )
+
+    prompt = ASSESSMENT_PROMPT.format(
+        title=f'Final Assessment — {roadmap.title}',
+        node_title=f'Roadmap: {roadmap.title}',
+        node_description=(roadmap.description or f'Career path: {career_path}')[:500],
+        difficulty=clamped,
+        bloom_staircase=bloom_staircase_text,
+        program=effective_program,
+        year_level=year_display,
+        career_track=track_context,
+        program_scope=program_scope,
+        transcript_section=transcript_section,
+    )
+
+    system_msg = (
+        'You are an expert CS education assessor for Filipino university students (CHED-aligned CCS programs). '
+        'You are generating a CUMULATIVE FINAL ASSESSMENT covering an entire learning roadmap. '
+        'Return only a valid JSON array of exactly 10 MCQ objects. No markdown, no extra text. '
+        'Follow the Bloom\'s staircase strictly — Q1 must be the easiest, Q10 the hardest. '
+        'Spread questions across the full roadmap content — early skills, core skills, and projects — not just one area. '
+        'For distractors: one specific factual sentence per wrong option explaining exactly why it is wrong. '
+        'Respect the program scope — do not generate questions on topics outside the student\'s program.'
+    )
+    if is_incoming:
+        system_msg += (
+            ' This is a PRE-COLLEGE student. Absolutely NO code snippets, no syntax, no algorithm theory. '
+            'Conceptual and career-awareness questions only. Plain English throughout.'
+        )
+
+    response = _call_groq_with_rotation(
+        model='llama-3.3-70b-versatile',
+        messages=[
+            {'role': 'system', 'content': system_msg},
+            {'role': 'user', 'content': prompt},
+        ],
+        temperature=0.95,
+        max_tokens=4000,
+    )
+
+    raw = _strip_code_fence(response.choices[0].message.content)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        logger.error('[Groq] generate_final_assessment: invalid JSON. Raw: %.300s', raw)
         return []
 
 

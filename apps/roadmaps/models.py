@@ -32,12 +32,14 @@ class Roadmap(models.Model):
 
     def recalculate_completion(self):
         """Recalculate and save completion percentage.
-        Milestone nodes are excluded — they are auto-completed phase markers, not real tasks."""
-        total = self.nodes.exclude(node_type='milestone').count()
+        Milestone and final_assessment nodes are excluded — milestones are auto-completed phase
+        markers, and final_assessment is a gate node (not a regular learnable node)."""
+        excluded = ['milestone', 'final_assessment']
+        total = self.nodes.exclude(node_type__in=excluded).count()
         if total == 0:
             self.completion_percentage = 0
         else:
-            completed = self.nodes.filter(status='completed').exclude(node_type='milestone').count()
+            completed = self.nodes.filter(status='completed').exclude(node_type__in=excluded).count()
             self.completion_percentage = round((completed / total) * 100, 2)
         self.save(update_fields=['completion_percentage'])
 
@@ -48,6 +50,7 @@ class RoadmapNode(models.Model):
         SKILL = 'skill', 'Skill to Learn'
         PROJECT = 'project', 'Hands-on Project'
         ASSESSMENT = 'assessment', 'Self-Assessment'
+        FINAL_ASSESSMENT = 'final_assessment', 'Final Assessment'
         CERTIFICATION = 'certification', 'Certification Goal'
 
     class Status(models.TextChoices):
@@ -60,7 +63,7 @@ class RoadmapNode(models.Model):
     parent_node = models.ForeignKey(
         'self', null=True, blank=True, on_delete=models.SET_NULL, related_name='children'
     )
-    node_type = models.CharField(max_length=15, choices=NodeType.choices)
+    node_type = models.CharField(max_length=20, choices=NodeType.choices)
     title = models.CharField(max_length=200)
     description = models.TextField()
     skill_slug = models.SlugField(max_length=100, blank=True)
@@ -147,6 +150,32 @@ class AssessmentSession(models.Model):
 
     def __str__(self):
         return f'AssessmentSession(user={self.user_id}, resource={self.resource_id}, passed={self.passed})'
+
+
+class FinalAssessmentSession(models.Model):
+    """
+    One attempt at the 10-question Final Assessment for a roadmap.
+    Dynamically generated from the roadmap's skill + project content across all phases.
+    questions_json holds correct answers server-side — never sent to the client.
+    """
+    roadmap = models.ForeignKey(
+        Roadmap, on_delete=models.CASCADE,
+        related_name='final_assessment_sessions'
+    )
+    user = models.ForeignKey(
+        'accounts.CustomUser', on_delete=models.CASCADE,
+        related_name='final_assessment_sessions'
+    )
+    questions_json = models.JSONField()
+    passed = models.BooleanField(null=True)
+    score = models.IntegerField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'FinalAssessmentSession(user={self.user_id}, roadmap={self.roadmap_id}, passed={self.passed})'
 
 
 class VideoWatchUnlock(models.Model):
