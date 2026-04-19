@@ -155,3 +155,5 @@ celery -A config worker --loglevel=info
 ## Deployment
 
 Deployed on **Render**. Database on **Neon PostgreSQL**. Cache and Channels layer on **Redis**.
+
+**Live URL:** https://codecompass-backend.onrender.com
