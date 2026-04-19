@@ -55,16 +55,27 @@ def _fix_phase_structure(nodes_data):
             current['nodes'].append(node)
     phases.append(current)
 
-    # Fix phase purity: project phases contain ONLY projects
-    for i in range(len(phases) - 1, 0, -1):
-        phase_nodes = phases[i]['nodes']
-        has_project = any(n.get('node_type') == 'project' for n in phase_nodes)
+    # Move any project nodes that the AI placed in earlier phases (e.g. Core Skills)
+    # into the LAST phase — that's the designated "Build" phase. This catches the
+    # common case where the AI emits a project with parent_id = Phase 3 milestone
+    # but a node_order that sorts it before the milestone itself, causing it to
+    # render visually under the wrong phase header.
+    if len(phases) >= 2:
+        last_phase = phases[-1]
+        for i in range(len(phases) - 1):
+            stray_projects = [n for n in phases[i]['nodes'] if n.get('node_type') == 'project']
+            if stray_projects:
+                phases[i]['nodes'] = [n for n in phases[i]['nodes'] if n.get('node_type') != 'project']
+                last_phase['nodes'].extend(stray_projects)
 
-        if has_project:
-            stray = [n for n in phase_nodes if n.get('node_type') in ('skill', 'assessment')]
-            if stray:
-                phases[i - 1]['nodes'].extend(stray)
-                phases[i]['nodes'] = [n for n in phase_nodes if n.get('node_type') not in ('skill', 'assessment')]
+    # Conversely, move any stray skills/assessments out of the project phase
+    # (the LAST phase) back to an earlier skills phase.
+    if len(phases) >= 2:
+        last_phase = phases[-1]
+        stray_skills = [n for n in last_phase['nodes'] if n.get('node_type') in ('skill', 'assessment')]
+        if stray_skills:
+            phases[-2]['nodes'].extend(stray_skills)
+            last_phase['nodes'] = [n for n in last_phase['nodes'] if n.get('node_type') not in ('skill', 'assessment')]
 
     for phase in phases:
         phase['nodes'].sort(key=lambda n: _TYPE_ORDER.get(n.get('node_type', 'skill'), 0))
