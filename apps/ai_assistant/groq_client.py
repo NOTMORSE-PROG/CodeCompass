@@ -1022,8 +1022,13 @@ CRITICAL RULES — follow these exactly:
    - experienced: focus on advanced skills and portfolio-level projects
 
 3. REQUIRED PHASE STRUCTURE (use milestone nodes as phase headers):
-   Phase 1 — Foundations   (1 milestone + 2-3 nodes, node_type: "skill" ONLY)
+   Phase 1 — Foundations   (1 milestone + 3-4 nodes, node_type: "skill" ONLY)
+     → Must include the absolute entry-level basics of the path.
+       Web: HTML + CSS + JavaScript basics all belong here.
+       Python: Python syntax + data types + control flow all belong here.
+       Never put fewer than 3 skill nodes in Phase 1.
    Phase 2 — Core Skills   (1 milestone + 3-4 nodes, node_type: "skill" ONLY)
+     → Intermediate concepts that build on Phase 1 foundations.
    Phase 3 — Build         (1 milestone + 1-3 nodes, node_type: "project" ONLY — NO certifications here)
    Then AFTER Phase 3 (no milestone header for these trailing nodes):
      - EXACTLY ONE node with node_type: "final_assessment" (parent_id = the last Build-phase project)
