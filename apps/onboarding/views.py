@@ -61,6 +61,39 @@ def complete_from_chat(request):
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
 
+    # Guard: if key fields are still "unknown" the profile is too sparse to generate a good
+    # roadmap. Return a targeted follow-up question so the frontend can re-prompt the user
+    # instead of saving an incomplete profile.
+    _REQUIRED_FIELDS = ['recommended_path', 'career_goal', 'experience_level']
+    _BAD_VALUES = {'unknown', 'not specified', 'undecided', ''}
+    _FOLLOWUP_QUESTIONS = {
+        'recommended_path': (
+            'What career path interests you most? '
+            '(e.g. Web Development, Data Science, Cybersecurity, Mobile App Development)'
+        ),
+        'career_goal': (
+            "What's your goal — what kind of job do you want after graduating?"
+        ),
+        'experience_level': (
+            'How would you describe your programming experience so far? '
+            '(beginner, basic, intermediate, or experienced)'
+        ),
+    }
+    incomplete_fields = [
+        f for f in _REQUIRED_FIELDS
+        if not profile.get(f) or str(profile[f]).lower().strip() in _BAD_VALUES
+    ]
+    if incomplete_fields:
+        first_missing = incomplete_fields[0]
+        return Response(
+            {
+                'error': 'profile_incomplete',
+                'missing_fields': incomplete_fields,
+                'followup_question': _FOLLOWUP_QUESTIONS[first_missing],
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     with transaction.atomic():
         existing.onboarding_summary = profile
         existing.status = OnboardingSession.Status.COMPLETED

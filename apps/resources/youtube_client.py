@@ -752,6 +752,15 @@ def _pick_best_video(videos: list, topic_keyword: str, search_query: str = '',
         # already supplying videos elsewhere in this roadmap.
         if channel_lower in used_channels:
             s -= 2
+
+        # Gentle recency preference — never overrides difficulty or channel signals.
+        # Newer content is more likely to cover current APIs/tooling.
+        pub_year = v.get('published_year', 0)
+        if pub_year >= 2023:
+            s += 1   # past ~2 years: likely current
+        elif 0 < pub_year < 2020:
+            s -= 1   # older than 5 years: softer preference against
+
         return s
 
     return max(candidates, key=score)
@@ -810,6 +819,10 @@ def search_youtube(query: str, max_results: int = 5, language: str = 'en',
         results = []
         for item in response.get('items', []):
             snippet = item['snippet']
+            # publishedAt is present in snippet (part=snippet) — parse the year
+            # for lightweight recency scoring; no extra API call needed.
+            pub_str = snippet.get('publishedAt', '')
+            pub_year = int(pub_str[:4]) if pub_str and pub_str[:4].isdigit() else 0
             results.append({
                 'youtube_video_id': item['id']['videoId'],
                 'title': snippet['title'],
@@ -820,6 +833,7 @@ def search_youtube(query: str, max_results: int = 5, language: str = 'en',
                 'resource_type': 'youtube_video',
                 'is_free': True,
                 'language': language,
+                'published_year': pub_year,
             })
 
         # Enrich results with duration and view count from video details endpoint

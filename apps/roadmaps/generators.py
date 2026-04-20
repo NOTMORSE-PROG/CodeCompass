@@ -110,6 +110,18 @@ def save_roadmap_from_ai(roadmap: Roadmap, ai_data: dict) -> Roadmap:
 
     nodes_data = _fix_phase_structure(ai_data.get('nodes', []))
 
+    # Defensive check: the validator already ran inside generate_roadmap(), but
+    # save_roadmap_from_ai() can also be called with externally-supplied ai_data
+    # (e.g. tests, admin tooling). A second pass here prevents bad data reaching
+    # the DB regardless of the call path.
+    from apps.ai_assistant.validators import validate_generated_roadmap
+    recommended_path = ai_data.get('career_path', '')
+    ok, errors = validate_generated_roadmap(nodes_data, recommended_path)
+    if not ok:
+        raise ValueError(
+            f'Roadmap data failed validation before saving: {"; ".join(errors[:3])}'
+        )
+
     # Determine which indices start as 'available'.
     # The AI always leads with a milestone (Phase 1), which has no UI action.
     # We auto-complete milestones in the unlock chain, so we need the first

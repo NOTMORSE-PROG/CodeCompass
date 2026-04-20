@@ -116,6 +116,30 @@ def generate_roadmap(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    # Guard against partial profiles — if key fields are still "unknown" the AI will
+    # produce a generic, low-quality roadmap. Require the three fields that matter most.
+    _REQUIRED_ONBOARDING_FIELDS = ['recommended_path', 'career_goal', 'experience_level']
+    _BAD_ONBOARDING_VALUES = {'unknown', 'not specified', 'undecided', ''}
+    incomplete_fields = [
+        f for f in _REQUIRED_ONBOARDING_FIELDS
+        if not onboarding_summary.get(f)
+        or str(onboarding_summary[f]).lower().strip() in _BAD_ONBOARDING_VALUES
+    ]
+    if incomplete_fields:
+        return Response(
+            {
+                'error': 'onboarding_incomplete',
+                'missing_fields': incomplete_fields,
+                'detail': (
+                    'We need a bit more about you before building your roadmap. '
+                    'Please clarify: '
+                    + ', '.join(f.replace('_', ' ') for f in incomplete_fields)
+                    + '.'
+                ),
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     # Block if user already has a live roadmap
     if Roadmap.objects.filter(user=user, status=Roadmap.Status.ACTIVE).exists():
         return Response(
@@ -817,14 +841,15 @@ def replace_roadmap_node(request, roadmap_pk, node_pk):
         else:
             setattr(node, field, COERCE_INT[field](val) if field in COERCE_INT else val)
 
-    node.status = RoadmapNode.Status.LOCKED
-    node.completed_at = None
-    node.last_replaced_at = timezone.now()
-    node.save(update_fields=[
-        'title', 'description', 'node_type', 'estimated_hours', 'difficulty',
-        'status', 'completed_at', 'last_replaced_at',
-    ])
-    node.roadmap.recalculate_completion()
+    with transaction.atomic():
+        node.status = RoadmapNode.Status.LOCKED
+        node.completed_at = None
+        node.last_replaced_at = timezone.now()
+        node.save(update_fields=[
+            'title', 'description', 'node_type', 'estimated_hours', 'difficulty',
+            'status', 'completed_at', 'last_replaced_at',
+        ])
+        node.roadmap.recalculate_completion()
     return Response(RoadmapNodeSerializer(node).data)
 
 

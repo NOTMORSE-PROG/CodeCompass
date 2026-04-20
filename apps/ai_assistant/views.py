@@ -1,6 +1,8 @@
 """REST endpoints for chat session management (history, list, create)."""
+from django.core.cache import cache
 from django.db.models import Count
 from rest_framework import generics, permissions, status
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
 from .models import ChatSession, ChatMessage
@@ -84,3 +86,26 @@ class ChatMessageListView(generics.ListAPIView):
             session__session_id=self.kwargs['session_id'],
             session__user=self.request.user,
         )
+
+
+@api_view(['GET'])
+@permission_classes([permissions.IsAdminUser])
+def ai_health(request):
+    """
+    GET /api/chat/admin/ai-health/
+    Admin-only view returning AI telemetry counters.
+    Counters are incremented in consumers.py when the LLM emits malformed tags.
+    Requires Redis cache backend (standard for this project).
+    """
+    tag_keys = [
+        'ai.tag.dropped.roadmap_edit',
+        'ai.tag.dropped.roadmap_switch',
+        'ai.tag.dropped.roadmap_upskill',
+    ]
+    dropped_counts = {key.split('.')[-1]: cache.get(key, 0) for key in tag_keys}
+    roadmap_retry_count = cache.get('ai.roadmap_generation.retry_total', 0)
+
+    return Response({
+        'dropped_tags': dropped_counts,
+        'roadmap_generation_retries': roadmap_retry_count,
+    })

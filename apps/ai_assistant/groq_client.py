@@ -640,15 +640,22 @@ def _build_context_block(user_context: dict, mode: str = 'roadmap') -> str:
     if year or program:
         lines.append(f"Year Level: {year or 'N/A'}  |  Program: {program or 'N/A'}")
 
-    background = user_context.get('background', '')
+    background = (user_context.get('background', '') or '')[:200]
     if background:
         lines.append(f"Background: {background}")
 
     interests = user_context.get('interests', [])
     if interests:
-        lines.append(f"Interests: {', '.join(interests) if isinstance(interests, list) else interests}")
+        if isinstance(interests, list):
+            # Limit to 5 items, each capped at 50 chars, to keep the system prompt bounded
+            safe_interests = ', '.join(str(i)[:50] for i in interests[:5])
+        else:
+            safe_interests = str(interests)[:200]
+        lines.append(f"Interests: {safe_interests}")
 
-    career_goal = user_context.get('career_goal', '') or user_context.get('target_career', '')
+    career_goal = (
+        (user_context.get('career_goal', '') or user_context.get('target_career', '') or '')[:200]
+    )
     if career_goal:
         lines.append(f"Career Goal: {career_goal}")
 
@@ -1173,6 +1180,18 @@ CRITICAL RULES — follow these exactly:
 
    Pick ONLY 1–2 free certifications as the trailing certification nodes. If you mention an
    optional paid upgrade, put it in the node description text only — do NOT make the node itself a paid cert.
+
+TECHNOLOGY CURRENCY (strictly enforced):
+   - Recommend only technologies that are actively maintained and have real job-market demand
+     in the 2025–2026 Philippines IT/BPO sector.
+   - FORBIDDEN (EOL, abandoned, or no current job-market relevance):
+       Flash / ActionScript, AngularJS v1, CoffeeScript, Bower, Backbone.js,
+       jQuery as a standalone skill (ok as a brief legacy mention in description only),
+       PHP 5.x, Internet Explorer-specific APIs, VB6, Silverlight, Grunt as a primary tool.
+   - MINIMUM VERSIONS when naming specific tools:
+       Python 3.10+  |  React 18+  |  Node.js 18 LTS+  |  Java 17+
+       PHP 8.x  |  .NET 8+  |  Android API 33+
+   - Do NOT recommend any technology whose official maintenance ended before 2022.
 
 5. NO "assessment" node_type — use "final_assessment" instead (exactly one per roadmap, after Phase 3).
    Allowed node_type values: milestone, skill, project, final_assessment, certification.
@@ -1831,28 +1850,70 @@ def generate_final_assessment(
 def generate_roadmap(quiz_summary: dict) -> dict:
     """
     Call Groq to generate a roadmap JSON from a student's quiz summary.
-    Returns the parsed JSON dict.
+    Uses json_object mode (valid JSON guaranteed) + up to 3 semantic-validation
+    retries with error feedback and lowering temperature. Raises ValueError on
+    permanent failure so the calling view can return a clean error to the user.
     """
     import json
+    from apps.ai_assistant.validators import validate_generated_roadmap
 
-    prompt = ROADMAP_GENERATION_PROMPT.format(quiz_summary=json.dumps(quiz_summary, indent=2))
+    recommended_path = quiz_summary.get('recommended_path', '')
+    year_level = quiz_summary.get('year_level', '')
+    experience_level = quiz_summary.get('experience_level', '')
 
-    response = _call_groq_with_rotation(
-        model='llama-3.3-70b-versatile',
-        messages=[
-            {'role': 'system', 'content': 'You are a curriculum designer. Return only valid JSON.'},
-            {'role': 'user', 'content': prompt},
-        ],
-        temperature=0.7,
-        max_tokens=4096,
+    base_prompt = ROADMAP_GENERATION_PROMPT.format(
+        quiz_summary=json.dumps(quiz_summary, indent=2)
     )
+    user_content = base_prompt
+    temperatures = [0.7, 0.5, 0.3]
 
-    raw = _strip_code_fence(response.choices[0].message.content)
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        logger.error('[Groq] generate_roadmap: invalid JSON. Raw: %.300s', raw)
-        raise ValueError('AI returned invalid JSON for roadmap generation.')
+    for attempt in range(3):
+        response = _call_groq_with_rotation(
+            model='llama-3.3-70b-versatile',
+            messages=[
+                {'role': 'system', 'content': 'You are a curriculum designer. Return only valid JSON.'},
+                {'role': 'user', 'content': user_content},
+            ],
+            temperature=temperatures[attempt],
+            max_tokens=4096,
+            response_format={'type': 'json_object'},
+        )
+
+        raw = _strip_code_fence(response.choices[0].message.content)
+        try:
+            ai_data = json.loads(raw)
+        except json.JSONDecodeError:
+            # json_object mode should prevent this; treat it like a validation failure
+            logger.warning('[Groq] generate_roadmap attempt %d: JSON parse error. Raw: %.300s', attempt + 1, raw)
+            user_content = base_prompt + f'\n\nPrevious attempt returned unparseable JSON. Return valid JSON only.'
+            continue
+
+        nodes = ai_data.get('nodes', [])
+        ok, errors = validate_generated_roadmap(
+            nodes, recommended_path, year_level, experience_level
+        )
+        if ok:
+            return ai_data
+
+        logger.warning(
+            '[Groq] generate_roadmap attempt %d rejected (%d errors): %s',
+            attempt + 1, len(errors), '; '.join(errors[:5])
+        )
+        try:
+            from django.core.cache import cache as _cache
+            _cache.incr('ai.roadmap_generation.retry_total', 1)
+        except Exception:
+            pass
+        user_content = (
+            base_prompt
+            + f'\n\nPrevious attempt violated these rules (fix all of them):\n'
+            + '\n'.join(f'- {e}' for e in errors)
+        )
+
+    raise ValueError(
+        f'AI could not generate a valid roadmap after 3 attempts. '
+        f'Last errors: {"; ".join(errors[:3])}'
+    )
 
 
 _PROFILE_EXTRACTION_PROMPT = """

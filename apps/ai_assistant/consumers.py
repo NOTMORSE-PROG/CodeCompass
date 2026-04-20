@@ -22,6 +22,7 @@ import re
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.contrib.auth.models import AnonymousUser
+from django.core.cache import cache
 
 logger = logging.getLogger('ai_assistant.consumers')
 
@@ -95,9 +96,26 @@ _JAILBREAK_RE = re.compile(
 )
 
 
+_MAX_CHAT_INPUT_LEN = 4000
+
+# Unicode characters used to obfuscate jailbreak payloads (bidi overrides + zero-width).
+# Strip these before jailbreak scanning so "ign\u200bore" still matches "ignore".
+_UNICODE_OBFUSCATION_RE = re.compile(
+    '[\u200b\u200c\u200d\ufeff'   # zero-width space/non-joiner/joiner, BOM
+    '\u202a\u202b\u202c\u202d\u202e'  # left/right embed/override/pop
+    '\u2066\u2067\u2068\u2069]'   # isolate controls
+)
+
+
+def _strip_unicode_obfuscation(text: str) -> str:
+    return _UNICODE_OBFUSCATION_RE.sub('', text)
+
+
 def _check_jailbreak(text: str) -> bool:
-    """Return True if the message matches a known jailbreak pattern."""
-    return bool(_JAILBREAK_RE.search(text[:2000]))
+    """Return True if the message matches a known jailbreak pattern.
+    Scans the full message (not truncated) after stripping Unicode obfuscation chars.
+    """
+    return bool(_JAILBREAK_RE.search(_strip_unicode_obfuscation(text)))
 
 
 def _extract_suggestions(text: str):
@@ -142,20 +160,28 @@ def _extract_roadmap_switch(text: str):
     clean = re.sub(r'\s*\[ROADMAP_SWITCH:.*?\]', '', text, flags=re.IGNORECASE | re.DOTALL).strip()
     if not match:
         return clean, None
+    raw_tag = match.group(1)
     try:
-        proposal = json.loads(match.group(1))
+        proposal = json.loads(raw_tag)
     except (json.JSONDecodeError, ValueError):
+        logger.warning('[AIChat] dropped malformed ROADMAP_SWITCH (JSON error): %.200s', raw_tag)
+        cache.incr('ai.tag.dropped.roadmap_switch', 1)
         return clean, None
     rid = proposal.get('roadmap_id')
     new_path = proposal.get('new_path', '').strip()
     career_goal = proposal.get('career_goal', '').strip()
     summary = proposal.get('summary', '').strip()
     if not all([rid, new_path, career_goal, summary]):
+        logger.warning('[AIChat] dropped invalid ROADMAP_SWITCH (missing fields): %.200s', raw_tag)
+        cache.incr('ai.tag.dropped.roadmap_switch', 1)
         return clean, None
     try:
         if int(str(rid)) <= 0:
+            logger.warning('[AIChat] dropped invalid ROADMAP_SWITCH (bad roadmap_id): %.200s', raw_tag)
+            cache.incr('ai.tag.dropped.roadmap_switch', 1)
             return clean, None
     except (ValueError, TypeError):
+        cache.incr('ai.tag.dropped.roadmap_switch', 1)
         return clean, None
     return clean, proposal
 
@@ -170,18 +196,26 @@ def _extract_roadmap_upskill(text: str):
     clean = re.sub(r'\s*\[ROADMAP_UPSKILL:.*?\]', '', text, flags=re.IGNORECASE | re.DOTALL).strip()
     if not match:
         return clean, None
+    raw_tag = match.group(1)
     try:
-        proposal = json.loads(match.group(1))
+        proposal = json.loads(raw_tag)
     except (json.JSONDecodeError, ValueError):
+        logger.warning('[AIChat] dropped malformed ROADMAP_UPSKILL (JSON error): %.200s', raw_tag)
+        cache.incr('ai.tag.dropped.roadmap_upskill', 1)
         return clean, None
     rid = proposal.get('roadmap_id')
     summary = proposal.get('summary', '').strip()
     if not all([rid, summary]):
+        logger.warning('[AIChat] dropped invalid ROADMAP_UPSKILL (missing fields): %.200s', raw_tag)
+        cache.incr('ai.tag.dropped.roadmap_upskill', 1)
         return clean, None
     try:
         if int(str(rid)) <= 0:
+            logger.warning('[AIChat] dropped invalid ROADMAP_UPSKILL (bad roadmap_id): %.200s', raw_tag)
+            cache.incr('ai.tag.dropped.roadmap_upskill', 1)
             return clean, None
     except (ValueError, TypeError):
+        cache.incr('ai.tag.dropped.roadmap_upskill', 1)
         return clean, None
     return clean, proposal
 
@@ -200,9 +234,14 @@ def _extract_edit_proposals(text: str):
         try:
             proposal = json.loads(raw)
         except (json.JSONDecodeError, ValueError):
+            logger.warning('[AIChat] dropped malformed ROADMAP_EDIT (JSON error): %.200s', raw)
+            cache.incr('ai.tag.dropped.roadmap_edit', 1)
             continue
         if _is_valid_proposal(proposal):
             valid.append(proposal)
+        else:
+            logger.warning('[AIChat] dropped invalid ROADMAP_EDIT (validation failed): %.200s', raw)
+            cache.incr('ai.tag.dropped.roadmap_edit', 1)
     return clean, valid
 
 
@@ -370,6 +409,24 @@ class ChatConsumer(AsyncWebsocketConsumer):
         user_message_text = data.get('message', '').strip()
         if not user_message_text:
             return
+
+        # Reject oversized messages before any DB write or Groq call.
+        # Also strip Unicode obfuscation chars from the message so they don't
+        # smuggle jailbreak payloads or inflate token counts.
+        user_message_text = _strip_unicode_obfuscation(user_message_text)
+        if len(user_message_text) > _MAX_CHAT_INPUT_LEN:
+            try:
+                await self.send(text_data=json.dumps({
+                    'type': 'stream_error',
+                    'error': (
+                        f'Your message is too long ({len(user_message_text)} characters). '
+                        f'Please keep it under {_MAX_CHAT_INPUT_LEN} characters.'
+                    ),
+                }))
+            except Exception:
+                pass
+            return
+
         language = data.get('language', 'english')
 
         # Per-connection rate limiting: 15 messages per 60-second window
