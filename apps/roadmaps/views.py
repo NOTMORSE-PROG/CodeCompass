@@ -300,8 +300,12 @@ def fix_structure(request, roadmap_pk):
 def fetch_node_resources(request, roadmap_pk, node_pk):
     """
     POST /api/roadmaps/{id}/nodes/{nid}/fetch-resources/
-    Lazy-populate YouTube video IDs for a node's placeholder resources.
-    Called when the student expands a node and resources have no video ID.
+
+    Videos are saved to the DB during onboarding by save_roadmap_from_ai, so in
+    the normal case this endpoint is a pure DB read. We only hit YouTube again
+    if the initial generation left empty-URL placeholders behind (e.g. API quota
+    exhausted mid-generation) — in that case we retry Pass 1 to fill them.
+    Already-saved videos are NEVER touched here.
     """
     try:
         node = RoadmapNode.objects.get(
@@ -312,9 +316,19 @@ def fetch_node_resources(request, roadmap_pk, node_pk):
     except RoadmapNode.DoesNotExist:
         return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
-    from apps.resources.youtube_client import populate_node_resources
     from .serializers import NodeResourceSerializer
-    populate_node_resources(node)
+
+    # Explicit guard: only call the populator if there's actual work to do.
+    # Once all placeholders have been filled (or flagged yt:unavailable), this
+    # endpoint never makes another YouTube API call for this node.
+    has_unfilled_placeholders = node.resources.filter(
+        resource_type='youtube_video',
+        url='',
+    ).exists()
+    if has_unfilled_placeholders:
+        from apps.resources.youtube_client import populate_node_resources
+        populate_node_resources(node)  # Pass 1 only — won't replace saved videos
+
     resources = node.resources.all()
     return Response(NodeResourceSerializer(resources, many=True).data)
 

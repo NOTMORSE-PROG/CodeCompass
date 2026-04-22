@@ -180,10 +180,13 @@ def save_roadmap_from_ai(roadmap: Roadmap, ai_data: dict) -> Roadmap:
                 description=search_query,  # used as YouTube search query
             )
 
-    # Populate YouTube resources with real video IDs via YouTube API
+    # Populate YouTube resources with real video IDs via YouTube API.
+    # allow_replacement=True runs the quality-filter pass over freshly-inserted
+    # LLM-titled rows during initial generation only. On-demand fetch-resources
+    # calls use the default (False), so saved videos remain stable afterwards.
     from apps.resources.youtube_client import populate_node_resources
     for node in node_id_map.values():
-        populate_node_resources(node)
+        populate_node_resources(node, allow_replacement=True)
 
     # Second pass: link parent nodes
     for node_data in nodes_data:

@@ -916,13 +916,18 @@ def _search_for_node(node, used_video_ids: set, used_channels: set,
     )
 
 
-def populate_node_resources(node) -> int:
+def populate_node_resources(node, allow_replacement: bool = False) -> int:
     """
     For a RoadmapNode:
-    1. Fill placeholder resources (url='') with real YouTube videos.
-    2. Re-evaluate already-stored videos — if the stored title fails quality check,
-       search for a better replacement. This handles bad videos saved before the
-       quality filter existed.
+    1. Fill placeholder resources (url='') with real YouTube videos. Always runs.
+    2. (Optional) Re-evaluate already-stored videos and replace those with
+       low-quality titles. Only runs when allow_replacement=True.
+
+    allow_replacement defaults to False so a video, once saved to the database,
+    stays saved across subsequent fetch-resources calls. Only the initial roadmap
+    generation passes True — that's when freshly-inserted LLM-titled rows benefit
+    from a quality pass. For every other call site (on-demand expansion, retries,
+    etc.) the saved video is treated as final.
 
     Diversification: queries are difficulty-parametrized and deterministic per
     (user, node), so different users get different videos on the same node and
@@ -977,6 +982,11 @@ def populate_node_resources(node) -> int:
             placeholder.save(update_fields=['url'])
 
     # ── Pass 2: dynamically replace low-quality existing videos ────────────────
+    # Only runs when the caller opts in (roadmap generation). For on-demand
+    # fetch-resources calls this is skipped so saved videos remain stable.
+    if not allow_replacement:
+        return populated
+
     existing = NodeResource.objects.filter(
         node=node,
         resource_type='youtube_video',
@@ -985,6 +995,17 @@ def populate_node_resources(node) -> int:
     for resource in existing:
         if _video_passes_quality(resource.title):
             continue  # already a good video — leave it alone
+        # Don't replace a video any user has engaged with. VideoWatchUnlock
+        # rows are created at the 5-min watch threshold; AssessmentSession rows
+        # carry questions_json built from THIS video's transcript, so swapping
+        # the video would orphan that data.
+        if (resource.video_watch_unlocks.exists()
+                or resource.assessment_sessions.exists()):
+            logger.info(
+                'Skipping Pass 2 replacement for engaged resource id=%s title=%r',
+                resource.id, resource.title,
+            )
+            continue
         # This video's title looks like meta/opinion content — find a better one.
         # Exclude the current bad video from candidates.
         old_title = resource.title
