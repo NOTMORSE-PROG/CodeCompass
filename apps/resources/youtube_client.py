@@ -463,25 +463,65 @@ def _fetch_video_details(video_ids: list) -> dict:
 # Research: Udemy avg lecture = 8–15 min; videos < 10 min are typically too shallow for a lesson
 MIN_VIDEO_MINUTES = 10
 
-# Titles matching these patterns are opinion/meta/clickbait videos — not actual lessons.
-# Score them -3 so they only win if there are literally no other options.
+# Track-aware recency: a 2015 algorithms lecture is still canonical; a 2015 React
+# tutorial is obsolete. We classify by keyword match against the node topic +
+# query; the default bucket keeps the pre-change mild penalty. Keep sets small
+# and specific — weak keywords would cause misclassification across the catalogue.
+EVERGREEN_KEYWORDS = frozenset({
+    'algorithm', 'algorithms', 'data structure', 'data structures',
+    'sorting', 'searching', 'binary tree', 'linked list', 'graph theory',
+    'dynamic programming', 'recursion', 'big o', 'time complexity',
+    'space complexity',
+    'sql', 'relational database', 'normalization', 'database design',
+    'indexing', 'query planner',
+    'git', 'version control',
+    'design pattern', 'design patterns', 'oop', 'solid principles',
+    'clean code', 'refactoring',
+    'linux', 'bash', 'shell scripting', 'regex', 'regular expression',
+    'operating system', 'kernel', 'memory management', 'threading',
+    'concurrency', 'process',
+    'tcp', 'udp', 'http', 'https', 'dns', 'osi model', 'subnetting',
+    'computer network', 'computer networks',
+    'cryptography', 'hashing', 'symmetric encryption', 'asymmetric encryption',
+    'public key',
+    'compiler', 'interpreter', 'assembly language', 'formal language',
+})
+
+FAST_MOVING_KEYWORDS = frozenset({
+    'react', 'next.js', 'nextjs', 'next js', 'vue', 'vue.js', 'angular',
+    'svelte', 'sveltekit', 'remix', 'astro', 'solid.js',
+    'tailwind', 'tailwindcss', 'shadcn',
+    'flutter', 'jetpack compose', 'swiftui', 'react native', 'expo',
+    'tensorflow', 'pytorch', 'keras', 'huggingface', 'transformers',
+    'langchain', 'llamaindex', 'openai api', 'claude api', 'gpt-4',
+    'gpt-5', 'gemini', 'llm', 'rag', 'vector database', 'pinecone', 'chroma',
+    'aws', 'azure', 'gcp', 'kubernetes', 'k8s', 'terraform', 'pulumi',
+    'github actions', 'cloudflare workers',
+    'vite', 'webpack 5', 'bun', 'deno', 'turbopack',
+})
+
+# Minimum score a video must reach to be returned. Below this floor the ranker
+# returns None so the caller's 'yt:unavailable' path (auto-completed in the UI
+# per ca76070) kicks in. Overridable via settings for ops tuning without a deploy.
+_MIN_VIDEO_SCORE = int(getattr(settings, 'YOUTUBE_MIN_SCORE', 0))
+
+# Titles matching these patterns are opinion/meta/clickbait videos — not actual
+# lessons. Score them -2 so they're deprioritised without being able to single-
+# handedly reverse a win from preferred channel + duration + topic relevance.
 _META_TITLE_PATTERNS = [
     'has changed', 'is dead', 'is dying', 'you should stop', 'stop using',
-    'nobody talks about', 'every developer should', 'this will change',
-    'changed everything', 'honest opinion', 'my opinion', 'the truth about',
+    'nobody talks about', 'this will change', 'changed everything',
+    'honest opinion', 'my opinion', 'the truth about',
     'why i quit', 'why i left', 'i was wrong', 'unpopular opinion',
     'reaction to', 'responding to', 'what nobody tells you', 'you need to know',
-    'tier list', 'ranked', 'vlog', 'q&a', 'ama', 'best of', 'top 10', 'top 5',
-    'roadmap 2024', 'roadmap 2025', 'roadmap 2026', 'roadmap 2027',
+    'tier list', 'ranked', 'vlog', 'q&a', 'ama', 'best of',
     # Time-challenge content — always surface-level, rarely a deep tutorial
     'in 1 day', 'in 7 days', 'in 30 days', 'in one day', 'in one week',
-    # Comparison / debate (space-padded) — opinion pieces, not tutorials
-    ' vs ',
     # Hype / engagement bait
-    'watch before', 'before you start', 'changed my life',
+    'watch before', 'changed my life',
     'why most developers', 'most programmers',
     # Roundup listicles — not node-specific tutorials
-    'tools every', 'every developer should',
+    'every developer should know',
 ]
 
 # ---------------------------------------------------------------------------
@@ -710,60 +750,90 @@ def _pick_best_video(videos: list, topic_keyword: str, search_query: str = '',
     eligible = [v for v in videos if not (0 < v.get('duration_minutes', 0) < MIN_VIDEO_MINUTES)]
     candidates = eligible if eligible else videos  # fall back to all if every video is too short
 
+    topic_ctx_lower = f'{topic_keyword} {search_query}'.lower()
+    is_evergreen = any(kw in topic_ctx_lower for kw in EVERGREEN_KEYWORDS)
+    is_fast_moving = any(kw in topic_ctx_lower for kw in FAST_MOVING_KEYWORDS)
+
     def score(v):
-        s = 0
+        parts = {}
         title_lower = v['title'].lower()
         channel_lower = v['youtube_channel'].lower()
 
         # Penalise meta/opinion/clickbait titles — they're not lessons
         if any(pat in title_lower for pat in _META_TITLE_PATTERNS):
-            s -= 3
+            parts['meta'] = -2
 
         # Channel bonus ONLY applies when the title is actually about the topic.
         # This prevents a famous channel from promoting an off-topic video over
         # a more relevant video from an unknown channel.
         title_relevant = _title_is_relevant(v['title'], search_query, topic_keyword)
         if channel_lower in PREFERRED_CHANNELS and title_relevant:
-            s += 2
+            parts['channel'] = 2
 
         if title_relevant:
-            s += 1   # title directly covers the topic
+            parts['topic'] = 1   # title directly covers the topic
 
         # Difficulty-aware level matching — the part that fixes
         # "intermediate nodes still suggest basics."
         has_beginner_marker = any(m in title_lower for m in _BEGINNER_MARKERS)
         has_advanced_marker = any(m in title_lower for m in _ADVANCED_MARKERS)
         if d >= 3 and has_beginner_marker:
-            s -= 3   # intermediate+ nodes shouldn't show "for beginners"
+            parts['level_beginner_penalty'] = -3
         if d >= 4 and has_advanced_marker:
-            s += 2   # reward advanced framing for hard nodes
+            parts['level_advanced_bonus'] = 2
         if d <= 2 and has_advanced_marker and not has_beginner_marker:
-            s -= 2   # don't drop expert talks on beginner nodes either
+            parts['level_too_advanced'] = -2
 
         dur = v.get('duration_minutes', 0)
         if MIN_VIDEO_MINUTES <= dur <= 20:
-            s += 2   # strongly prefer focused lessons (Udemy avg: 8-15 min)
+            parts['duration_focused'] = 2
         elif 0 < dur <= 35:
-            s += 1   # acceptable — longer but still reasonable
+            parts['duration_acceptable'] = 1
         if d >= 4 and dur >= 20:
-            s += 1   # advanced nodes benefit from longer-form coverage
+            parts['duration_longform_bonus'] = 1
 
         # Cross-node diversity: soft penalty for reusing a channel that's
         # already supplying videos elsewhere in this roadmap.
         if channel_lower in used_channels:
-            s -= 2
+            parts['channel_reuse'] = -2
 
-        # Gentle recency preference — never overrides difficulty or channel signals.
-        # Newer content is more likely to cover current APIs/tooling.
+        # Track-aware recency. Evergreen topics: no age signal. Fast-moving:
+        # stronger preference for recent. Everything else: the mild default.
         pub_year = v.get('published_year', 0)
-        if pub_year >= 2023:
-            s += 1   # past ~2 years: likely current
-        elif 0 < pub_year < 2020:
-            s -= 1   # older than 5 years: softer preference against
+        if pub_year > 0:
+            if is_evergreen and not is_fast_moving:
+                pass  # age is not a quality signal for fundamentals
+            elif is_fast_moving:
+                if pub_year >= 2023:
+                    parts['recency_fast'] = 2
+                elif pub_year < 2021:
+                    parts['recency_fast'] = -2
+            else:
+                if pub_year >= 2023:
+                    parts['recency'] = 1
+                elif pub_year < 2020:
+                    parts['recency'] = -1
 
+        s = sum(parts.values())
+        logger.debug(
+            '[YT] score=%d title=%r breakdown=%s', s, v['title'][:80], parts,
+        )
         return s
 
-    return max(candidates, key=score)
+    best = max(candidates, key=score)
+    best_score = score(best)
+    if best_score < _MIN_VIDEO_SCORE:
+        logger.info(
+            '[YT] no candidate cleared min score for topic=%r '
+            '(best=%r score=%d floor=%d)',
+            topic_keyword, best['title'][:80], best_score, _MIN_VIDEO_SCORE,
+        )
+        return None
+    logger.info(
+        '[YT] picked video=%r score=%d topic=%r from %d candidates',
+        best['title'][:80], best_score, topic_keyword, len(candidates),
+    )
+    return best
 
 
 def _get_youtube_client():
@@ -896,7 +966,7 @@ def _search_for_node(node, used_video_ids: set, used_channels: set,
     aggregated = {}
     for q in variants:
         for v in search_youtube(
-            q, max_results=5, order=order, video_duration=video_duration,
+            q, max_results=8, order=order, video_duration=video_duration,
         ):
             aggregated[v['youtube_video_id']] = v   # de-dupe across variants
 

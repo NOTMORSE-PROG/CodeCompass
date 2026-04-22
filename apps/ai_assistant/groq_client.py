@@ -1198,8 +1198,11 @@ TECHNOLOGY CURRENCY (strictly enforced):
 
 6. LINEAR CHAIN: each node's parent_id = the previous node's id (simple sequential chain).
 
-7. RESOURCES: every skill node must have 1-2 YouTube search queries targeting Filipino learners.
+7. RESOURCES: every skill AND project node must have 1-2 YouTube search queries targeting Filipino learners.
    Prefer: "freeCodeCamp", "Traversy Media", "The Net Ninja", "CS50", "Corey Schafer"
+   - Skill nodes: concept / tutorial videos teaching the topic.
+   - Project nodes: full project walkthroughs or build-along tutorials for what the student will build
+     (e.g., search_query: "build [project name] tutorial", "[tech stack] project walkthrough").
 
 8. XP REWARDS:
    milestone = 50  |  skill = 100-150  |  project = 250-350  |  final_assessment = 300-500  |  certification = 200-400

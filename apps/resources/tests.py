@@ -14,7 +14,7 @@ from django.test import SimpleTestCase as TestCase
 from . import youtube_client as yt
 
 
-def _video(vid_id, title, channel, duration=15):
+def _video(vid_id, title, channel, duration=15, published_year=2024):
     return {
         'youtube_video_id': vid_id,
         'title': title,
@@ -27,6 +27,7 @@ def _video(vid_id, title, channel, duration=15):
         'language': 'en',
         'duration_minutes': duration,
         'view_count': 100000,
+        'published_year': published_year,
     }
 
 
@@ -233,3 +234,97 @@ class RetryBackoffTests(TestCase):
             with self.assertRaises(Exception):
                 yt._retry_youtube(always_503, attempts=3, label='test')
         self.assertEqual(calls['n'], 3)
+
+
+class TrackAwareRecencyTests(TestCase):
+    """G8b refinement: evergreen topics get no age signal; fast-moving get a stronger one."""
+
+    def test_evergreen_old_video_beats_recent_clickbait(self):
+        # Classic algorithms lecture from a preferred channel; 2015 but canonical.
+        old = _video(
+            'old', 'Introduction to Algorithms - Lecture 1',
+            'MIT OpenCourseWare', duration=45, published_year=2015,
+        )
+        new = _video(
+            'new', 'Top 10 Algorithms You Need to Know in 1 Day',
+            'Clickbait Channel', duration=8, published_year=2024,
+        )
+        picked = yt._pick_best_video(
+            [old, new], topic_keyword='algorithms',
+            search_query='algorithms data structures tutorial', difficulty=2,
+        )
+        self.assertEqual(picked['youtube_video_id'], 'old')
+
+    def test_fast_moving_prefers_recent_even_equal_channels(self):
+        # React is fast-moving — a 2016 tutorial loses to a 2024 tutorial even
+        # from the same-tier channel.
+        old = _video(
+            'old', 'React Tutorial for Beginners',
+            'Traversy Media', duration=15, published_year=2016,
+        )
+        new = _video(
+            'new', 'React Tutorial for Beginners',
+            'Traversy Media', duration=15, published_year=2024,
+        )
+        picked = yt._pick_best_video(
+            [old, new], topic_keyword='react',
+            search_query='react tutorial', difficulty=1,
+        )
+        self.assertEqual(picked['youtube_video_id'], 'new')
+
+    def test_default_bucket_keeps_mild_recency_preference(self):
+        # A topic in neither set (e.g. "django") — newer still wins by +1.
+        old = _video(
+            'old', 'Django Tutorial',
+            'Corey Schafer', duration=15, published_year=2018,
+        )
+        new = _video(
+            'new', 'Django Tutorial',
+            'Corey Schafer', duration=15, published_year=2024,
+        )
+        picked = yt._pick_best_video(
+            [old, new], topic_keyword='django',
+            search_query='django tutorial', difficulty=2,
+        )
+        self.assertEqual(picked['youtube_video_id'], 'new')
+
+    def test_min_score_floor_returns_none_on_bad_batch(self):
+        # All three candidates are clickbait with no offsetting signals.
+        bad = [
+            _video('a', 'React is Dead - My Opinion',
+                   'Random', duration=0, published_year=2024),
+            _video('b', 'Vlog: React Tier List Ranked',
+                   'Random', duration=0, published_year=2024),
+            _video('c', 'Unpopular Opinion: Why I Quit React',
+                   'Random', duration=0, published_year=2024),
+        ]
+        picked = yt._pick_best_video(
+            bad, topic_keyword='cooking',  # deliberately off-topic to zero the topic bonus
+            search_query='cooking pasta', difficulty=2,
+        )
+        self.assertIsNone(picked)
+
+    def test_min_score_floor_overridable(self):
+        # Operators can relax the floor via YOUTUBE_MIN_SCORE without a deploy;
+        # patch the resolved module-level constant to simulate that.
+        bad = [
+            _video('a', 'React is Dead - My Opinion',
+                   'Random', duration=0, published_year=2024),
+        ]
+        with patch.object(yt, '_MIN_VIDEO_SCORE', -99):
+            picked = yt._pick_best_video(
+                bad, topic_keyword='cooking',
+                search_query='cooking pasta', difficulty=2,
+            )
+        self.assertIsNotNone(picked)
+
+
+class ScoreLoggingTests(TestCase):
+    def test_pick_emits_info_log_line(self):
+        candidates = [_video('a', 'Django Tutorial', 'Corey Schafer')]
+        with self.assertLogs('apps.resources.youtube_client', level='INFO') as cm:
+            yt._pick_best_video(
+                candidates, topic_keyword='django',
+                search_query='django tutorial', difficulty=2,
+            )
+        self.assertTrue(any('picked video=' in msg for msg in cm.output))

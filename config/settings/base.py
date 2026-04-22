@@ -245,6 +245,9 @@ FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:5173')
 # ===========================================================================
 GROQ_API_KEYS = [k.strip() for k in env('GROQ_API_KEYS', default='').split(',') if k.strip()]
 YOUTUBE_API_KEY = env('YOUTUBE_API_KEY', default='')
+# Ranker min-score floor (see apps/resources/youtube_client.py). Lower to -99
+# to disable the floor; raise for a stricter quality gate.
+YOUTUBE_MIN_SCORE = env.int('YOUTUBE_MIN_SCORE', default=0)
 GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID', default='')
 GOOGLE_CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET', default='')
 # Job APIs — priority: Careerjet HTTP (primary) → Jooble (fallback 1) → JSearch (fallback 2)
