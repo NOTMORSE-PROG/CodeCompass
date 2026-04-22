@@ -1885,7 +1885,7 @@ def generate_roadmap(quiz_summary: dict) -> dict:
         except json.JSONDecodeError:
             # json_object mode should prevent this; treat it like a validation failure
             logger.warning('[Groq] generate_roadmap attempt %d: JSON parse error. Raw: %.300s', attempt + 1, raw)
-            user_content = base_prompt + f'\n\nPrevious attempt returned unparseable JSON. Return valid JSON only.'
+            user_content = base_prompt + '\n\nPrevious attempt returned unparseable JSON. Return valid JSON only.'
             continue
 
         nodes = ai_data.get('nodes', [])
@@ -1906,7 +1906,7 @@ def generate_roadmap(quiz_summary: dict) -> dict:
             pass
         user_content = (
             base_prompt
-            + f'\n\nPrevious attempt violated these rules (fix all of them):\n'
+            + '\n\nPrevious attempt violated these rules (fix all of them):\n'
             + '\n'.join(f'- {e}' for e in errors)
         )
 
