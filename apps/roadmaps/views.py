@@ -635,7 +635,7 @@ def start_final_assessment(request, roadmap_pk):
     try:
         questions = generate_final_assessment(
             roadmap=roadmap,
-            difficulty=final_node.difficulty or 3,
+            difficulty=min(5, (final_node.difficulty or 3) + 1),
             user_role=user_role,
             program=program,
             year_level=year_level,
