@@ -431,27 +431,33 @@ def _parse_iso_duration(duration_str: str) -> int:
 
 def _fetch_video_details(video_ids: list) -> dict:
     """
-    Fetch contentDetails and statistics for a list of video IDs.
-    Returns a dict keyed by videoId: {'duration_minutes': int, 'view_count': int}.
-    Retried with backoff on transient YouTube errors.
+    Fetch contentDetails, statistics, status, and snippet for a list of video IDs.
+    Returns a dict keyed by videoId: {duration_minutes, view_count, embeddable,
+    audio_lang}. Retried with backoff on transient YouTube errors.
     """
     if not video_ids:
         return {}
     try:
         youtube = _get_youtube_client()
         request = youtube.videos().list(
-            part='contentDetails,statistics',
+            part='contentDetails,statistics,status,snippet',
             id=','.join(video_ids),
         )
         response = _retry_youtube(request.execute, label='videos.list')
         result = {}
         for item in response.get('items', []):
             vid = item['id']
-            duration_str = item.get('contentDetails', {}).get('duration', '')
+            cdetails = item.get('contentDetails', {}) or {}
+            status = item.get('status', {}) or {}
+            snippet_part = item.get('snippet', {}) or {}
             view_count = int(item.get('statistics', {}).get('viewCount', 0) or 0)
             result[vid] = {
-                'duration_minutes': _parse_iso_duration(duration_str),
+                'duration_minutes': _parse_iso_duration(cdetails.get('duration', '')),
                 'view_count': view_count,
+                # Default permissive on missing status so partial responses
+                # don't retroactively reject known-good videos.
+                'embeddable': bool(status.get('embeddable', True)),
+                'audio_lang': (snippet_part.get('defaultAudioLanguage') or '').lower(),
             }
         return result
     except Exception as e:
@@ -618,7 +624,12 @@ def _build_query_variants(node_title: str, node_description: str,
     rng = _deterministic_rng(user_id, node_id)
     picked = rng.sample(pool, k=min(2, len(pool)))
     base = effective_title.strip()
-    variants = [f'{base} {suffix}'.strip() for suffix in picked if base]
+    # F1: phrase-quote multi-word bases for YouTube's soft phrase-boost so
+    # "Personal Website Project" retrieves website-project tutorials rather
+    # than any video that happens to contain the word "project". Single-word
+    # bases stay unquoted (YouTube rejects single-word phrase quotes).
+    quoted_base = f'"{base}"' if base and ' ' in base else base
+    variants = [f'{quoted_base} {suffix}'.strip() for suffix in picked if base]
     if node_description and len(node_description.split()) >= 4:
         variants.append(node_description.strip()[:80])
     if not variants:
@@ -698,23 +709,129 @@ def _cache_key(*parts) -> str:
     return 'yt:search:' + hashlib.sha1(raw.encode()).hexdigest()
 
 
+# ── Hallucination guards (F1/F2): language + topic-drift filtering ──────────
+# Unicode script ranges that indicate a language we don't support (anything
+# outside {English, Tagalog/Filipino}). Tagalog/Filipino uses basic Latin +
+# common Spanish-origin diacritics, so it shares the Latin range with English
+# and is not filtered by script.
+_NON_LATIN_SCRIPT_RANGES = (
+    (0x0400, 0x04FF),   # Cyrillic (Russian, Ukrainian, Serbian)
+    (0x0590, 0x05FF),   # Hebrew
+    (0x0600, 0x06FF),   # Arabic
+    (0x0900, 0x097F),   # Devanagari (Hindi, Marathi, Sanskrit)
+    (0x0980, 0x09FF),   # Bengali
+    (0x0A80, 0x0AFF),   # Gujarati
+    (0x0B80, 0x0BFF),   # Tamil
+    (0x0C00, 0x0C7F),   # Telugu
+    (0x0D00, 0x0D7F),   # Malayalam
+    (0x0E00, 0x0E7F),   # Thai
+    (0x1000, 0x109F),   # Burmese / Myanmar
+    (0x1780, 0x17FF),   # Khmer
+    (0x3040, 0x309F),   # Hiragana
+    (0x30A0, 0x30FF),   # Katakana
+    (0x3400, 0x4DBF),   # CJK Extension A
+    (0x4E00, 0x9FFF),   # CJK Unified Ideographs
+    (0xAC00, 0xD7AF),   # Hangul Syllables
+)
+
+# Titles advertising a language we don't accept. 'tagalog' and 'filipino' are
+# intentionally NOT in this list — Tagalog/Filipino content passes through.
+_UNSUPPORTED_LANG_PHRASES = frozenset({
+    'hindi', 'urdu', 'bengali', 'bangla', 'tamil', 'telugu', 'marathi',
+    'gujarati', 'kannada', 'malayalam', 'punjabi', 'sinhala',
+    'español', 'portugues', 'português', 'français', 'francais',
+    'deutsch', 'italiano', 'nederlands',
+    'turkce', 'türkçe', 'ελληνικά',
+    'русский', 'pусский', 'українська',
+    '中文', '日本語', '한국어',
+    'tiếng việt', 'tieng viet', 'bahasa melayu', 'bahasa indonesia',
+    'arabic', 'العربية', 'عربي',
+    'farsi', 'فارسی',
+})
+
+# BCP-47 audio-language prefixes we accept from defaultAudioLanguage.
+_ACCEPTED_AUDIO_LANG_PREFIXES = ('en', 'tl', 'fil')
+
+# Noise words that must not count as topic signal in _title_is_relevant. These
+# appear in almost every tutorial query as shell/structural terms, so matching
+# on them alone produces false positives (e.g. "ChatGPT Project Tutorial"
+# matching a "Personal Website Project" query).
+_RELEVANCE_NOISE = frozenset({
+    'for', 'the', 'and', 'with', 'how', 'what', 'that', 'this',
+    'from', 'into', 'using', 'learn', 'full', 'free',
+    'project', 'projects', 'website', 'websites', 'webpage', 'webpages',
+    'app', 'apps', 'application', 'applications', 'system', 'systems',
+    'guide', 'tutorial', 'tutorials', 'course', 'courses', 'crash',
+    'intro', 'introduction', 'example', 'examples', 'sample', 'samples',
+    'lesson', 'lessons', 'video', 'videos', 'series', 'part',
+})
+
+# Hot topics that hallucinate onto unrelated nodes. Titles mentioning these
+# are rejected unless the query itself references the same term.
+_DRIFT_TOPICS = frozenset({
+    'chatgpt', 'openai', 'claude', 'gemini', 'llama 3', 'llama 4',
+    'mistral', 'ai assistant', 'prompt engineering', 'generative ai',
+    'gen ai', 'stable diffusion', 'midjourney', 'github copilot',
+})
+
+
+def _title_appears_unsupported(title: str) -> bool:
+    """True if the title is dominated by non-Latin script or advertises a
+    language we don't accept. Tagalog/Filipino titles pass — Latin script and
+    their language names are not in the deny list."""
+    if not title:
+        return False
+    title_lower = title.lower()
+    if any(p in title_lower for p in _UNSUPPORTED_LANG_PHRASES):
+        return True
+    non_latin = sum(
+        1 for ch in title
+        if any(lo <= ord(ch) <= hi for lo, hi in _NON_LATIN_SCRIPT_RANGES)
+    )
+    alpha_total = sum(1 for ch in title if ch.isalpha())
+    if alpha_total == 0:
+        return False
+    return (non_latin / alpha_total) > 0.20
+
+
+def _audio_lang_is_accepted(audio_lang: str) -> bool:
+    """Accept English/Tagalog/Filipino variants. Unset passes — most creators
+    never set defaultAudioLanguage and the script check catches non-Latin."""
+    if not audio_lang:
+        return True
+    lang = audio_lang.lower()
+    return any(lang.startswith(p) for p in _ACCEPTED_AUDIO_LANG_PREFIXES)
+
+
 def _title_is_relevant(title: str, search_query: str, topic_keyword: str) -> bool:
     """
     Check if a video title is topically relevant to the lesson.
-    Requires at least one significant keyword from the search query or node title to appear in the title.
 
-    Stopword set intentionally narrow: previously stripped 'tutorial', 'course',
-    'beginner(s)', 'guide' too, which discarded the level signals we now use
-    for difficulty-aware scoring. Keep only true filler words.
+    Three guards, in order:
+    1. Drift-topic: if the title advertises a hot LLM/AI topic that isn't in
+       the query, reject outright (prevents ChatGPT video on web project node).
+    2. Substantive match: count query words that aren't in _RELEVANCE_NOISE
+       and require >= min(2, len(substantive)) of them in the title.
+    3. Empty-set fallback: when the query has only noise words (e.g. "Final
+       Project"), fall back to single-match on all 3+ char words.
     """
     title_lower = title.lower()
-    # Extract meaningful words (3+ chars) from search query and topic keyword
-    query_words = set(
-        w for w in re.split(r'[\s\-_/]+', (search_query + ' ' + topic_keyword).lower())
-        if len(w) >= 3 and w not in {'for', 'the', 'and', 'with', 'how', 'what', 'that', 'this',
-                                      'from', 'into', 'using', 'learn', 'full', 'free'}
+    query_lower = f'{search_query} {topic_keyword}'.lower()
+
+    for drift in _DRIFT_TOPICS:
+        if drift in title_lower and drift not in query_lower:
+            return False
+
+    substantive = frozenset(
+        w for w in re.split(r'[\s\-_/]+', query_lower)
+        if len(w) >= 3 and w not in _RELEVANCE_NOISE
     )
-    return any(w in title_lower for w in query_words)
+    if not substantive:
+        raw = [w for w in re.split(r'[\s\-_/]+', query_lower) if len(w) >= 3]
+        return any(w in title_lower for w in raw)
+
+    matches = sum(1 for w in substantive if w in title_lower)
+    return matches >= min(2, len(substantive))
 
 
 def _pick_best_video(videos: list, topic_keyword: str, search_query: str = '',
@@ -879,6 +996,10 @@ def search_youtube(query: str, max_results: int = 5, language: str = 'en',
             maxResults=max_results,
             relevanceLanguage=language,
             order=order,
+            # F3: exclude non-embeddable videos at source. Zero extra quota.
+            videoEmbeddable='true',
+            # Belt-and-braces against mis-indexed NSFW/gore uploads.
+            safeSearch='moderate',
         )
         if video_duration in ('short', 'medium', 'long'):
             list_kwargs['videoDuration'] = video_duration
@@ -906,13 +1027,36 @@ def search_youtube(query: str, max_results: int = 5, language: str = 'en',
                 'published_year': pub_year,
             })
 
-        # Enrich results with duration and view count from video details endpoint
+        # Enrich results with duration, view count, embed status, and audio lang.
         video_ids = [r['youtube_video_id'] for r in results]
         details = _fetch_video_details(video_ids)
         for r in results:
             vid_details = details.get(r['youtube_video_id'], {})
             r['duration_minutes'] = vid_details.get('duration_minutes', 0)
             r['view_count'] = vid_details.get('view_count', 0)
+            r['embeddable'] = vid_details.get('embeddable', True)
+            r['audio_lang'] = vid_details.get('audio_lang', '')
+
+        # Hallucination guards (F2/F3): drop non-embeddable, non-English/Tagalog
+        # content before it ever reaches the ranker. Each rejection logs a
+        # reason so ops can diagnose quality issues post-deploy.
+        kept = []
+        for r in results:
+            reason = None
+            if not r.get('embeddable', True):
+                reason = 'embed_disabled'
+            elif _title_appears_unsupported(r['title']):
+                reason = 'unsupported_language_title'
+            elif not _audio_lang_is_accepted(r.get('audio_lang', '')):
+                reason = 'unsupported_language_audio'
+            if reason:
+                logger.debug(
+                    '[YT] filtered video=%r reason=%s query=%r',
+                    r['title'][:80], reason, query,
+                )
+                continue
+            kept.append(r)
+        results = kept
 
         try:
             cache.set(ckey, results, _CACHE_TTL_SECONDS)

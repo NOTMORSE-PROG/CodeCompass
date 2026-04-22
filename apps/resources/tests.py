@@ -14,7 +14,8 @@ from django.test import SimpleTestCase as TestCase
 from . import youtube_client as yt
 
 
-def _video(vid_id, title, channel, duration=15, published_year=2024):
+def _video(vid_id, title, channel, duration=15, published_year=2024,
+           embeddable=True, audio_lang='en'):
     return {
         'youtube_video_id': vid_id,
         'title': title,
@@ -28,6 +29,8 @@ def _video(vid_id, title, channel, duration=15, published_year=2024):
         'duration_minutes': duration,
         'view_count': 100000,
         'published_year': published_year,
+        'embeddable': embeddable,
+        'audio_lang': audio_lang,
     }
 
 
@@ -35,9 +38,9 @@ class BuildQueryVariantsTests(TestCase):
     def test_beginner_suffixes_for_difficulty_1(self):
         variants = yt._build_query_variants('React Hooks', '', difficulty=1, user_id=1, node_id=1)
         joined = ' '.join(variants).lower()
-        # Every variant must start with the node title.
+        # Every variant must start with the node title (optionally phrase-quoted).
         for v in variants:
-            self.assertTrue(v.lower().startswith('react hooks'))
+            self.assertTrue(v.lower().lstrip('"').startswith('react hooks'))
         # Difficulty-1 suffix pool: tutorial / for beginners / crash course / intro / explained simply
         self.assertTrue(
             any(kw in joined for kw in ('tutorial', 'beginner', 'crash course', 'intro', 'explained'))
@@ -328,3 +331,147 @@ class ScoreLoggingTests(TestCase):
                 search_query='django tutorial', difficulty=2,
             )
         self.assertTrue(any('picked video=' in msg for msg in cm.output))
+
+
+class HallucinationGuardTests(TestCase):
+    """Root-cause guards against the three reported failure modes:
+    topic drift (ChatGPT on web project), non-English/Tagalog content,
+    and embed-disabled videos."""
+
+    # ── F1: topic-drift prevention ─────────────────────────────────────────
+    def test_F1a_phrase_quoting_multi_word_title(self):
+        variants = yt._build_query_variants(
+            'Personal Website Project', '', 2, 1, 1,
+        )
+        self.assertTrue(variants[0].startswith('"Personal Website Project"'))
+
+    def test_F1b_single_word_title_not_quoted(self):
+        variants = yt._build_query_variants('Kubernetes', '', 2, 1, 1)
+        self.assertTrue(variants[0].startswith('Kubernetes'))
+        self.assertFalse(variants[0].startswith('"'))
+
+    def test_F1c_drift_topic_rejected_when_query_unrelated(self):
+        self.assertFalse(yt._title_is_relevant(
+            'Build a Portfolio with ChatGPT',
+            search_query='personal website portfolio tutorial',
+            topic_keyword='personal website',
+        ))
+
+    def test_F1d_drift_topic_allowed_when_query_mentions_it(self):
+        self.assertTrue(yt._title_is_relevant(
+            'ChatGPT Clone in Python',
+            search_query='chatgpt clone python tutorial',
+            topic_keyword='chatgpt clone',
+        ))
+
+    def test_F1e_noise_only_match_rejected(self):
+        # Only 'project' overlaps, and 'project' is noise now.
+        self.assertFalse(yt._title_is_relevant(
+            '10 JavaScript Project Ideas',
+            search_query='personal website project',
+            topic_keyword='personal website',
+        ))
+
+    def test_F1f_two_substantive_matches_still_relevant(self):
+        self.assertTrue(yt._title_is_relevant(
+            'Personal Portfolio Website Tutorial',
+            search_query='personal website portfolio',
+            topic_keyword='personal website',
+        ))
+
+    def test_F1g_single_substantive_word_fallback(self):
+        # substantive={kubernetes}; min(2,1)=1; single match suffices.
+        self.assertTrue(yt._title_is_relevant(
+            'Kubernetes Deep Dive',
+            search_query='kubernetes tutorial',
+            topic_keyword='kubernetes',
+        ))
+
+    # ── F2: language guarantees (English + Tagalog/Filipino accepted) ──────
+    def test_F2a_devanagari_detected(self):
+        self.assertTrue(yt._title_appears_unsupported('React सीखें Tutorial'))
+
+    def test_F2b_bengali_detected(self):
+        self.assertTrue(yt._title_appears_unsupported('Web Dev কোর্স'))
+
+    def test_F2c_cjk_detected(self):
+        self.assertTrue(yt._title_appears_unsupported('Learn React チュートリアル'))
+
+    def test_F2d_english_with_punctuation_passes(self):
+        self.assertFalse(yt._title_appears_unsupported('React & TypeScript — 2024 Guide'))
+
+    def test_F2e_language_name_phrase_rejected(self):
+        self.assertTrue(yt._title_appears_unsupported(
+            'Web Development Best Practices (Hindi)'
+        ))
+
+    def test_F2f_tagalog_filipino_titles_pass(self):
+        self.assertFalse(yt._title_appears_unsupported('Web Dev Tagalog Tutorial'))
+        self.assertFalse(yt._title_appears_unsupported('Filipino React Course'))
+
+    def test_F2g_audio_lang_accepted_variants(self):
+        for ok in ('en', 'en-US', 'en-GB', 'tl', 'tl-PH', 'fil', ''):
+            self.assertTrue(yt._audio_lang_is_accepted(ok), f'expected {ok!r} accepted')
+        for bad in ('hi', 'ja', 'es', 'zh-CN'):
+            self.assertFalse(yt._audio_lang_is_accepted(bad), f'expected {bad!r} rejected')
+
+    # ── F3: embeddability ──────────────────────────────────────────────────
+    def test_F3_non_embeddable_filtered_from_search_results(self):
+        """Integration-style: monkey-patch the two YouTube client calls and
+        assert the post-enrichment filter drops the non-embeddable video."""
+        from django.core.cache import cache as django_cache
+
+        fake_search_response = {
+            'items': [
+                {
+                    'id': {'videoId': 'ok_vid'},
+                    'snippet': {
+                        'title': 'Django Tutorial',
+                        'channelTitle': 'Corey Schafer',
+                        'thumbnails': {'medium': {'url': ''}},
+                        'description': '',
+                        'publishedAt': '2024-01-01T00:00:00Z',
+                    },
+                },
+                {
+                    'id': {'videoId': 'bad_vid'},
+                    'snippet': {
+                        'title': 'Django Deep Dive',
+                        'channelTitle': 'Some Channel',
+                        'thumbnails': {'medium': {'url': ''}},
+                        'description': '',
+                        'publishedAt': '2024-01-01T00:00:00Z',
+                    },
+                },
+            ],
+        }
+
+        class _FakeRequest:
+            def execute(self_inner):
+                return fake_search_response
+
+        class _FakeSearch:
+            def list(self_inner, **kwargs):
+                return _FakeRequest()
+
+        class _FakeClient:
+            def search(self_inner):
+                return _FakeSearch()
+
+        fake_details = {
+            'ok_vid':  {'duration_minutes': 15, 'view_count': 100, 'embeddable': True,  'audio_lang': 'en'},
+            'bad_vid': {'duration_minutes': 15, 'view_count': 100, 'embeddable': False, 'audio_lang': 'en'},
+        }
+
+        # Flush any stale cache entry for this query
+        django_cache.delete_pattern('yt:search:*') if hasattr(django_cache, 'delete_pattern') else None
+
+        with patch.object(yt, '_get_youtube_client', return_value=_FakeClient()), \
+             patch.object(yt, '_fetch_video_details', return_value=fake_details), \
+             patch.object(yt.settings, 'YOUTUBE_API_KEY', 'test-key'):
+            # Use a unique query so it doesn't hit a warm cache from earlier tests.
+            videos = yt.search_youtube('pytest-fixture-django-query')
+
+        ids = [v['youtube_video_id'] for v in videos]
+        self.assertIn('ok_vid', ids)
+        self.assertNotIn('bad_vid', ids)
