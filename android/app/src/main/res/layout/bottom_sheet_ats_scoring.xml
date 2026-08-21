@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:fontFamily="sans-serif-bold"
+            android:text="@string/resume_ats_score"
+            android:textColor="@color/colorTextPrimary"
+            android:textSize="18sp" />
+
+        <!-- Input phase -->
+        <LinearLayout
+            android:id="@+id/layoutAtsInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etJobDescription"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="top"
+                    android:hint="@string/resume_ats_paste_hint"
+                    android:inputType="textMultiLine"
+                    android:minLines="5" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnAnalyze"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/resume_ats_analyze"
+                android:textColor="@color/colorTextPrimary"
+                app:backgroundTint="@color/colorPrimary"
+                style="@style/Widget.MaterialComponents.Button" />
+
+        </LinearLayout>
+
+        <!-- Loading -->
+        <com.google.android.material.progressindicator.LinearProgressIndicator
+            android:id="@+id/atsLoadingBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginVertical="16dp"
+            android:indeterminate="true"
+            android:visibility="gone"
+            app:indicatorColor="@color/colorPrimary"
+            app:trackColor="@color/colorDivider" />
+
+        <!-- Results phase -->
+        <LinearLayout
+            android:id="@+id/layoutAtsResults"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <!-- Score circle -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:gravity="center">
+
+                <com.google.android.material.progressindicator.CircularProgressIndicator
+                    android:id="@+id/progressScore"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:max="100"
+                    android:progress="0"
+                    app:indicatorColor="@color/colorPrimary"
+                    app:indicatorSize="100dp"
+                    app:trackColor="@color/colorDivider"
+                    app:trackThickness="10dp" />
+
+                <LinearLayout
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvScoreValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-bold"
+                        android:text="@string/ats_score_initial_value"
+                        android:textColor="@color/colorTextPrimary"
+                        android:textSize="28sp" />
+
+                    <TextView
+                        android:id="@+id/tvScoreLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:fontFamily="sans-serif-medium"
+                        android:textColor="@color/colorTextSecondary"
+                        android:textSize="11sp" />
+
+                </LinearLayout>
+
+            </FrameLayout>
+
+            <!-- Breakdown bars -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/resume_ats_keywords_label"
+                    android:textColor="@color/colorTextSecondary"
+                    android:textSize="12sp" />
+                <ProgressBar
+                    android:id="@+id/barKeywords"
+                    style="@android:style/Widget.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:max="100"
+                    android:progressDrawable="@drawable/bg_template_selected" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/resume_ats_title_label"
+                    android:textColor="@color/colorTextSecondary"
+                    android:textSize="12sp" />
+                <ProgressBar
+                    android:id="@+id/barTitle"
+                    style="@android:style/Widget.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="8dp"
+                    android:layout_marginBottom="8dp"
+                    android:max="100" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/resume_ats_structure_label"
+                    android:textColor="@color/colorTextSecondary"
+                    android:textSize="12sp" />
+                <ProgressBar
+                    android:id="@+id/barStructure"
+                    style="@android:style/Widget.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="8dp"
+                    android:max="100" />
+
+            </LinearLayout>
+
+            <!-- Matched keywords -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="6dp"
+                android:fontFamily="sans-serif-bold"
+                android:text="@string/resume_ats_matched"
+                android:textColor="@color/colorTextPrimary"
+                android:textSize="14sp" />
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupMatched"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Missing required -->
+            <TextView
+                android:id="@+id/tvMissingRequiredLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="6dp"
+                android:fontFamily="sans-serif-bold"
+                android:text="@string/resume_ats_missing_required"
+                android:textColor="@color/colorDanger"
+                android:textSize="14sp" />
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupMissingRequired"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Missing preferred -->
+            <TextView
+                android:id="@+id/tvMissingPreferredLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="6dp"
+                android:fontFamily="sans-serif-bold"
+                android:text="@string/resume_ats_missing_preferred"
+                android:textColor="@color/colorStreak"
+                android:textSize="14sp" />
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupMissingPreferred"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Suggestions -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:fontFamily="sans-serif-bold"
+                android:text="@string/resume_ats_suggestions"
+                android:textColor="@color/colorTextPrimary"
+                android:textSize="14sp" />
+            <LinearLayout
+                android:id="@+id/containerSuggestions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:orientation="vertical" />
+
+            <!-- Clear results -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnClearResults"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/resume_ats_clear"
+                android:textColor="@color/colorTextSecondary"
+                style="@style/Widget.MaterialComponents.Button.TextButton" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

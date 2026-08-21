@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Phase / milestone section header -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:layout_marginTop="24dp"
+    android:layout_marginBottom="4dp">
+
+    <!-- Title row: line ── badge ── line -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1"
+            android:background="@color/dividerGray" />
+
+        <TextView
+            android:id="@+id/tvMilestoneTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/roadmap_milestone_title_placeholder"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="@color/milestoneActiveText"
+            android:background="@drawable/bg_status_pill"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="5dp"
+            android:layout_marginHorizontal="8dp"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1"
+            android:background="@color/dividerGray" />
+
+    </LinearLayout>
+
+    <!-- Stats row: X/Y done · +Z XP -->
+    <TextView
+        android:id="@+id/tvMilestoneStats"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="@string/node_progress_placeholder"
+        android:textSize="12sp"
+        android:textColor="@color/nodeLockedText"
+        android:layout_marginTop="4dp" />
+
+</LinearLayout>

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resume Preview</title>
+<style>
+:root { --primary: #1A2F5E; }
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; color: #222; line-height: 1.5; }
+.resume { width: 816px; margin: 0 auto; padding: 0; min-height: 1056px; }
+h1 { font-size: 26px; }
+h2 { font-size: 15px; color: var(--primary); border-bottom: 2px solid var(--primary); padding-bottom: 4px; margin-bottom: 10px; margin-top: 18px; text-transform: uppercase; letter-spacing: 1px; }
+h3 { font-size: 14px; margin-bottom: 2px; }
+p, li, span { font-size: 12px; }
+a { color: var(--primary); text-decoration: none; }
+ul { padding-left: 18px; }
+li { margin-bottom: 3px; }
+.contact-row { font-size: 11px; color: #555; margin-top: 4px; }
+.contact-row span + span::before { content: ' | '; color: #999; }
+.date { color: #666; font-size: 11px; }
+.entry { margin-bottom: 12px; }
+.entry-header { display: flex; justify-content: space-between; align-items: baseline; }
+.skills-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.skill-tag { background: #f0f0f0; padding: 2px 8px; border-radius: 3px; font-size: 11px; }
+.section { margin-bottom: 6px; }
+
+/* ─── MODERN ─────────────────────────────────────────────────── */
+.template-modern .resume { display: flex; }
+.template-modern .sidebar { width: 260px; background: var(--primary); color: #fff; padding: 30px 20px; min-height: 1056px; }
+.template-modern .sidebar h1 { color: #fff; font-size: 22px; }
+.template-modern .sidebar h2 { color: rgba(255,255,255,0.8); border-bottom-color: rgba(255,255,255,0.3); font-size: 13px; }
+.template-modern .sidebar .contact-row { color: rgba(255,255,255,0.7); }
+.template-modern .sidebar .contact-row span + span::before { color: rgba(255,255,255,0.4); }
+.template-modern .sidebar .skill-tag { background: rgba(255,255,255,0.15); color: #fff; }
+.template-modern .sidebar a { color: rgba(255,255,255,0.9); }
+.template-modern .main { flex: 1; padding: 30px 24px; }
+
+/* ─── CLASSIC ────────────────────────────────────────────────── */
+.template-classic .resume { padding: 40px 50px; font-family: Georgia, 'Times New Roman', serif; }
+.template-classic h1 { text-align: center; font-size: 28px; }
+.template-classic .contact-row { text-align: center; }
+.template-classic h2 { border-bottom: 1px solid #333; color: #333; }
+.template-classic .entry-header h3 { font-family: Georgia, serif; }
+
+/* ─── MINIMAL ────────────────────────────────────────────────── */
+.template-minimal .resume { padding: 40px 44px; }
+.template-minimal h1 { font-size: 32px; font-weight: 300; }
+.template-minimal h2 { border-bottom: none; border-left: 3px solid var(--primary); padding-left: 10px; padding-bottom: 0; }
+.template-minimal .contact-row { margin-top: 8px; }
+
+/* ─── EXECUTIVE ──────────────────────────────────────────────── */
+.template-executive .resume { padding: 0; }
+.template-executive .exec-header { background: var(--primary); color: #fff; padding: 30px 40px; }
+.template-executive .exec-header h1 { color: #fff; font-size: 28px; }
+.template-executive .exec-header .contact-row { color: rgba(255,255,255,0.8); }
+.template-executive .exec-header .contact-row span + span::before { color: rgba(255,255,255,0.4); }
+.template-executive .exec-body { padding: 24px 40px; }
+.template-executive h2 { color: var(--primary); }
+
+/* ─── SIDEBAR-BLUE (Blueprint) ───────────────────────────────── */
+.template-sidebar-blue .resume { display: flex; }
+.template-sidebar-blue .sidebar { width: 260px; background: color-mix(in srgb, var(--primary) 8%, white); border-left: 4px solid var(--primary); padding: 30px 18px; min-height: 1056px; }
+.template-sidebar-blue .sidebar h2 { color: var(--primary); border-bottom-color: var(--primary); }
+.template-sidebar-blue .main { flex: 1; padding: 30px 24px; }
+.template-sidebar-blue .main .entry { border-left: 2px solid #e0e0e0; padding-left: 12px; }
+
+/* ─── PRINT ──────────────────────────────────────────────────── */
+@media print {
+  body { background: #fff; }
+  .resume { width: 100%; margin: 0; box-shadow: none; }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+function escHtml(s) {
+  if (!s) return '';
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function renderResume(jsonStr, templateName, primaryColor) {
+  var data;
+  try { data = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr; } catch(e) { data = {}; }
+  if (primaryColor) document.documentElement.style.setProperty('--primary', primaryColor);
+
+  var pi = data.personalInfo || {};
+  var summary = data.summary || '';
+  var exps = data.experience || [];
+  var edus = data.education || [];
+  var skills = data.skills || {};
+  var projects = data.projects || [];
+  var certs = data.certifications || [];
+
+  // Contact line
+  var contacts = [];
+  if (pi.email) contacts.push(escHtml(pi.email));
+  if (pi.phone) contacts.push(escHtml(pi.phone));
+  if (pi.location) contacts.push(escHtml(pi.location));
+  var links = [];
+  if (pi.linkedin) links.push('<a href="'+escHtml(pi.linkedin)+'">LinkedIn</a>');
+  if (pi.github) links.push('<a href="'+escHtml(pi.github)+'">GitHub</a>');
+  if (pi.website) links.push('<a href="'+escHtml(pi.website)+'">Portfolio</a>');
+  var contactHtml = '<div class="contact-row">' + contacts.map(function(c){return '<span>'+c+'</span>';}).join('') + '</div>';
+  if (links.length) contactHtml += '<div class="contact-row">' + links.map(function(l){return '<span>'+l+'</span>';}).join('') + '</div>';
+
+  // Summary
+  var summaryHtml = summary ? '<div class="section"><h2>Summary</h2><p>'+escHtml(summary)+'</p></div>' : '';
+
+  // Experience
+  var expHtml = '';
+  if (exps.length) {
+    expHtml = '<div class="section"><h2>Experience</h2>';
+    exps.forEach(function(e){
+      var dateStr = escHtml(e.startDate||'') + (e.current ? ' — Present' : (e.endDate ? ' — '+escHtml(e.endDate) : ''));
+      expHtml += '<div class="entry"><div class="entry-header"><h3>'+escHtml(e.title)+' — '+escHtml(e.company)+'</h3><span class="date">'+dateStr+'</span></div>';
+      if (e.location) expHtml += '<div class="date">'+escHtml(e.location)+'</div>';
+      if (e.bullets && e.bullets.length) {
+        expHtml += '<ul>';
+        e.bullets.forEach(function(b){ if(b) expHtml += '<li>'+escHtml(b)+'</li>'; });
+        expHtml += '</ul>';
+      }
+      expHtml += '</div>';
+    });
+    expHtml += '</div>';
+  }
+
+  // Education
+  var eduHtml = '';
+  if (edus.length) {
+    eduHtml = '<div class="section"><h2>Education</h2>';
+    edus.forEach(function(ed){
+      var dateStr = (ed.startDate||'') + (ed.endDate ? ' — '+ed.endDate : '');
+      eduHtml += '<div class="entry"><div class="entry-header"><h3>'+escHtml(ed.degree || ed.field)+'</h3><span class="date">'+escHtml(dateStr)+'</span></div>';
+      eduHtml += '<div class="date">'+escHtml(ed.school)+(ed.gpa ? ' | GPA: '+escHtml(ed.gpa) : '')+'</div></div>';
+    });
+    eduHtml += '</div>';
+  }
+
+  // Skills
+  var skillsHtml = '';
+  var allSkills = (skills.technical||[]).concat(skills.tools||[]).concat(skills.soft||[]);
+  if (allSkills.length) {
+    skillsHtml = '<div class="section"><h2>Skills</h2><div class="skills-list">';
+    allSkills.forEach(function(s){ skillsHtml += '<span class="skill-tag">'+escHtml(s)+'</span>'; });
+    skillsHtml += '</div></div>';
+  }
+
+  // Projects
+  var projHtml = '';
+  if (projects.length) {
+    projHtml = '<div class="section"><h2>Projects</h2>';
+    projects.forEach(function(p){
+      projHtml += '<div class="entry"><h3>'+escHtml(p.name)+'</h3>';
+      if (p.tech && p.tech.length) projHtml += '<div class="date">'+p.tech.map(escHtml).join(', ')+'</div>';
+      if (p.description) projHtml += '<p>'+escHtml(p.description)+'</p>';
+      if (p.link) projHtml += '<div><a href="'+escHtml(p.link)+'">'+escHtml(p.link)+'</a></div>';
+      projHtml += '</div>';
+    });
+    projHtml += '</div>';
+  }
+
+  // Certifications
+  var certHtml = '';
+  if (certs.length) {
+    certHtml = '<div class="section"><h2>Certifications</h2>';
+    certs.forEach(function(c){
+      certHtml += '<div class="entry"><h3>'+escHtml(c.name)+'</h3>';
+      certHtml += '<div class="date">'+escHtml(c.issuer||'')+(c.date ? ' — '+escHtml(c.date) : '')+'</div></div>';
+    });
+    certHtml += '</div>';
+  }
+
+  var html = '';
+  var tpl = templateName || 'modern';
+
+  if (tpl === 'modern' || tpl === 'sidebar-blue') {
+    // Sidebar layouts
+    html = '<div class="template-'+tpl+'"><div class="resume">';
+    html += '<div class="sidebar">';
+    html += '<h1>'+escHtml(pi.name)+'</h1>';
+    if (pi.title) html += '<p style="margin-top:4px;opacity:0.8;">'+escHtml(pi.title)+'</p>';
+    html += contactHtml + skillsHtml + certHtml + eduHtml;
+    html += '</div>';
+    html += '<div class="main">' + summaryHtml + expHtml + projHtml + '</div>';
+    html += '</div></div>';
+  } else if (tpl === 'executive') {
+    html = '<div class="template-executive"><div class="resume">';
+    html += '<div class="exec-header"><h1>'+escHtml(pi.name)+'</h1>';
+    if (pi.title) html += '<p style="margin-top:4px;opacity:0.85;">'+escHtml(pi.title)+'</p>';
+    html += contactHtml + '</div>';
+    html += '<div class="exec-body">' + summaryHtml + expHtml + eduHtml + skillsHtml + projHtml + certHtml + '</div>';
+    html += '</div></div>';
+  } else {
+    // classic, minimal
+    html = '<div class="template-'+tpl+'"><div class="resume">';
+    html += '<h1>'+escHtml(pi.name)+'</h1>';
+    if (pi.title) html += '<p style="font-size:14px;color:#555;margin-top:2px;">'+escHtml(pi.title)+'</p>';
+    html += contactHtml + summaryHtml + expHtml + eduHtml + skillsHtml + projHtml + certHtml;
+    html += '</div></div>';
+  }
+
+  document.getElementById('root').innerHTML = html;
+}
+
+function switchTemplate(name) {
+  // Re-render is needed; store data globally
+  if (window._resumeData) renderResume(window._resumeData, name, window._primaryColor);
+}
+
+function setColor(hex) {
+  window._primaryColor = hex;
+  document.documentElement.style.setProperty('--primary', hex);
+  if (window._resumeData && window._templateName) renderResume(window._resumeData, window._templateName, hex);
+}
+
+// Store data globally for re-rendering
+var _origRender = renderResume;
+renderResume = function(jsonStr, templateName, primaryColor) {
+  window._resumeData = jsonStr;
+  window._templateName = templateName;
+  window._primaryColor = primaryColor;
+  _origRender(jsonStr, templateName, primaryColor);
+};
+</script>
+</body>
+</html>

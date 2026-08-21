@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <!-- CC Avatar — visible only for AI messages -->
+    <TextView
+        android:id="@+id/tvAvatar"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="2dp"
+        android:layout_gravity="bottom"
+        android:background="@drawable/bg_circle_yellow"
+        android:fontFamily="sans-serif-black"
+        android:gravity="center"
+        android:text="@string/cc_avatar"
+        android:textColor="@color/colorOnPrimary"
+        android:textSize="10sp"
+        android:visibility="gone" />
+
+    <!-- Typing indicator bubble (3 bouncing dots, shown instead of tvMessage) -->
+    <LinearLayout
+        android:id="@+id/layoutTypingDots"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_chat_bubble"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingHorizontal="14dp"
+        android:paddingVertical="14dp"
+        android:visibility="gone">
+
+        <View
+            android:id="@+id/dot1"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:background="@drawable/bg_dot_typing" />
+
+        <View
+            android:id="@+id/dot2"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/bg_dot_typing" />
+
+        <View
+            android:id="@+id/dot3"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/bg_dot_typing" />
+
+    </LinearLayout>
+
+    <!-- AI message content column (bubble + resources + proposal) -->
+    <LinearLayout
+        android:id="@+id/layoutAiContent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:maxWidth="280dp">
+
+        <!-- Message bubble -->
+        <TextView
+            android:id="@+id/tvMessage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:padding="12dp"
+            android:textSize="15sp" />
+
+        <!-- Resource link cards (horizontal scroll, shown when AI returns resources) -->
+        <HorizontalScrollView
+            android:id="@+id/scrollResources"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:scrollbars="none"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/containerResources"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"/>
+
+        </HorizontalScrollView>
+
+        <!-- Roadmap edit proposal card (shown when AI returns edit_proposals) -->
+        <FrameLayout
+            android:id="@+id/containerProposal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"/>
+
+        <!-- Roadmap switch proposal card (shown when AI returns roadmap_switch) -->
+        <FrameLayout
+            android:id="@+id/containerRoadmapSwitch"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"/>
+
+        <!-- Roadmap upskill proposal card (shown when AI returns roadmap_upskill) -->
+        <FrameLayout
+            android:id="@+id/containerRoadmapUpskill"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"/>
+
+    </LinearLayout>
+
+</LinearLayout>

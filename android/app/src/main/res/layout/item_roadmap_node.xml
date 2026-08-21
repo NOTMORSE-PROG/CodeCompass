@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Node card — status-driven styling applied programmatically in NodeCardViewHolder -->
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/cardNode"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    app:cardCornerRadius="10dp"
+    app:cardElevation="1dp"
+    app:strokeWidth="2dp"
+    app:strokeColor="@color/nodeLockedBorder"
+    app:cardBackgroundColor="@color/colorSurface">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:baselineAligned="false"
+        android:padding="14dp">
+
+        <!-- Status icon circle (40×40dp) -->
+        <FrameLayout
+            android:id="@+id/frameNodeIcon"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/bg_node_icon_circle"
+            android:layout_marginEnd="12dp">
+
+            <!-- Lock icon (LOCKED state) -->
+            <ImageView
+                android:id="@+id/ivNodeLock"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:src="@drawable/ic_lock"
+                android:contentDescription="@null"
+                android:visibility="gone" />
+
+            <!-- Node order number (AVAILABLE / IN_PROGRESS) -->
+            <TextView
+                android:id="@+id/tvNodeOrder"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/node_number_one"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/nodeIconAvailableFg"
+                android:visibility="gone" />
+
+            <!-- Check icon (COMPLETED) -->
+            <TextView
+                android:id="@+id/tvNodeCheck"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:text="@string/step_done_icon"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/white"
+                android:visibility="gone" />
+
+        </FrameLayout>
+
+        <!-- Content area -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <!-- Title + type badge row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="5dp">
+
+                <TextView
+                    android:id="@+id/tvNodeTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/node_title_placeholder"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorTextPrimary"
+                    android:maxLines="2"
+                    android:ellipsize="end"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:id="@+id/tvNodeTypeBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/node_skill_tag"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/nodeBadgeSkillText"
+                    android:background="@drawable/bg_rounded_badge"
+                    android:paddingHorizontal="7dp"
+                    android:paddingVertical="3dp" />
+
+            </LinearLayout>
+
+            <!-- Metadata: hours · dots · label -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/tvNodeHours"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/node_duration_placeholder"
+                    android:textSize="12sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:layout_marginEnd="8dp" />
+
+                <!-- Difficulty dots (5 tiny Views) -->
+                <LinearLayout
+                    android:id="@+id/layoutDifficultyDots"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginEnd="6dp">
+
+                    <View android:id="@+id/dot1" android:layout_width="8dp" android:layout_height="8dp" android:layout_marginEnd="2dp" android:background="@drawable/bg_circle_gray" />
+                    <View android:id="@+id/dot2" android:layout_width="8dp" android:layout_height="8dp" android:layout_marginEnd="2dp" android:background="@drawable/bg_circle_gray" />
+                    <View android:id="@+id/dot3" android:layout_width="8dp" android:layout_height="8dp" android:layout_marginEnd="2dp" android:background="@drawable/bg_circle_gray" />
+                    <View android:id="@+id/dot4" android:layout_width="8dp" android:layout_height="8dp" android:layout_marginEnd="2dp" android:background="@drawable/bg_circle_gray" />
+                    <View android:id="@+id/dot5" android:layout_width="8dp" android:layout_height="8dp" android:background="@drawable/bg_circle_gray" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvDifficultyLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/node_difficulty_placeholder"
+                    android:textSize="12sp"
+                    android:textColor="@color/colorTextSecondary" />
+
+            </LinearLayout>
+
+            <!-- Prerequisite hint (LOCKED only) -->
+            <TextView
+                android:id="@+id/tvPrerequisiteHint"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="11sp"
+                android:textColor="@color/nodeLockedText"
+                android:textStyle="italic"
+                android:layout_marginTop="4dp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <!-- Right side: status badge + chevron -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginStart="8dp"
+            tools:ignore="UseCompoundDrawables">
+
+            <TextView
+                android:id="@+id/tvNodeStatusBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/roadmap_node_status_available"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textColor="@color/statusAvailableText"
+                android:background="@drawable/bg_status_pill"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="3dp"
+                android:layout_marginBottom="6dp" />
+
+            <ImageView
+                android:id="@+id/ivChevron"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_arrow_back"
+                android:rotation="-90"
+                android:contentDescription="@null"
+                app:tint="@color/nodeLockedText"
+                android:visibility="visible" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

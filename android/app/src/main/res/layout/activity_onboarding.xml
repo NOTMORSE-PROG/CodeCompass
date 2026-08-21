@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/colorBackground">
+
+    <!-- ── Chat screen ─────────────────────────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/layoutChat"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/colorBrandBlackSoft"
+        android:orientation="vertical"
+        android:visibility="visible">
+
+        <!-- Header — CC badge + CodeCompass + Onboarding Guide (matches web) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/colorTextPrimary"
+            android:elevation="4dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp">
+
+            <TextView
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginEnd="12dp"
+                android:background="@drawable/bg_circle_yellow"
+                android:fontFamily="sans-serif-black"
+                android:gravity="center"
+                android:text="@string/cc_avatar"
+                android:textColor="@color/colorOnPrimary"
+                android:textSize="11sp" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:text="CodeCompass"
+                    android:textColor="@color/white"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/onboarding_guide"
+                    android:textColor="@color/colorTextOnDark"
+                    android:textSize="12sp" />
+
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Chat Messages -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvChat"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:clipToPadding="false"
+            android:padding="8dp" />
+
+        <!-- Suggestion chips — horizontally scrollable, shown after AI response -->
+        <HorizontalScrollView
+            android:id="@+id/chipScrollView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingStart="52dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="8dp"
+            android:scrollbars="none"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/chipContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal" />
+
+        </HorizontalScrollView>
+
+        <!-- "Build My Roadmap" Button (hidden until AI signals ready) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnBuildRoadmap"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="16dp"
+            android:backgroundTint="@color/colorPrimary"
+            android:padding="14dp"
+            android:text="@string/btn_build_roadmap"
+            android:textColor="@color/colorOnPrimary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <!-- Bottom input bar -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/colorTextPrimary"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:padding="8dp">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilMessage"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:hint="@string/hint_message"
+                app:boxBackgroundColor="@color/colorBrandBlackMuted"
+                app:boxStrokeColor="@color/colorPrimary"
+                app:hintTextColor="@color/colorTextOnDark">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etMessage"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textMultiLine"
+                    android:maxLines="4"
+                    android:textColor="@color/white"
+                    android:textColorHint="@color/colorTextOnDark" />
+
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSend"
+                style="@style/Widget.Material3.Button.IconButton.Filled"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:backgroundTint="@color/colorPrimary"
+                android:contentDescription="@string/btn_send"
+                app:icon="@android:drawable/ic_menu_send"
+                app:iconTint="@color/colorOnPrimary" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- ── Completing overlay (mirrors web CompletingScreen) ─────────────── -->
+    <LinearLayout
+        android:id="@+id/layoutCompleting"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@color/colorBrandBlackSoft"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-bold"
+            android:text="@string/almost_there"
+            android:textColor="@color/white"
+            android:textSize="22sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="32dp"
+            android:text="@string/roadmap_generating"
+            android:textColor="@color/colorTextOnDark"
+            android:textSize="14sp" />
+
+        <!-- Step 1 -->
+        <LinearLayout
+            android:id="@+id/stepChatRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/stepChatIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="@drawable/bg_step_pending"
+                android:gravity="center"
+                android:text="@string/step_done_icon"
+                android:textColor="@color/colorTextPrimary"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
+            <ProgressBar
+                android:id="@+id/stepChatSpinner"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:indeterminateTint="@color/colorPrimary"
+                android:visibility="visible" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="@string/step_chat_done"
+                android:textColor="@color/white"
+                android:textSize="15sp" />
+        </LinearLayout>
+
+        <!-- Step 2 -->
+        <LinearLayout
+            android:id="@+id/stepAnalyzeRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/stepAnalyzeIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="@drawable/bg_step_pending"
+                android:gravity="center"
+                android:text="@string/step_done_icon"
+                android:textColor="@color/colorTextPrimary"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
+            <ProgressBar
+                android:id="@+id/stepAnalyzeSpinner"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:indeterminateTint="@color/colorPrimary"
+                android:visibility="gone" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="@string/step_analyzing"
+                android:textColor="@color/colorTextOnDark"
+                android:textSize="15sp" />
+        </LinearLayout>
+
+        <!-- Step 3 -->
+        <LinearLayout
+            android:id="@+id/stepBuildRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/stepBuildIcon"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="@drawable/bg_step_pending"
+                android:gravity="center"
+                android:text="@string/step_done_icon"
+                android:textColor="@color/colorTextPrimary"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
+            <ProgressBar
+                android:id="@+id/stepBuildSpinner"
+                style="?android:attr/progressBarStyleSmall"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:indeterminateTint="@color/colorPrimary"
+                android:visibility="gone" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:text="@string/step_building"
+                android:textColor="@color/colorTextOnDark"
+                android:textSize="15sp" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</FrameLayout>

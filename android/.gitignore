@@ -1,0 +1,65 @@
+# ---- Excluded sub-projects (managed separately) ----
+frontend/
+backend/
+
+# ---- Android / Gradle ----
+*.iml
+*.class
+*.apk
+*.aab
+*.hprof
+.gradle
+/local.properties
+/.idea/
+.navigation/
+/build
+/captures
+.externalNativeBuild
+.cxx
+app/build/
+
+# ---- Credentials & secrets ----
+# Keystores / signing
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+keystore.properties
+signing.properties
+release.properties
+
+# Environment / config secrets
+.env
+.env.*
+*.env
+secrets.properties
+credentials.properties
+credentials.json
+service-account*.json
+
+# Firebase / Google services (contain API keys)
+google-services.json
+GoogleService-Info.plist
+
+# Android secrets resource file (sometimes used to store keys)
+app/src/main/res/values/secrets.xml
+
+# ---- OS ----
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ---- Editor ----
+.vscode/
+*.suo
+*.sw?
+
+# ---- JVM crash dumps ----
+hs_err_pid*.log
+replay_pid*.log

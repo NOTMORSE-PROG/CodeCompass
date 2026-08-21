@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <!-- Drag handle -->
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:background="@drawable/bg_bottom_sheet_handle"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="12dp" />
+
+    <!-- Title -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/quiz_title"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="@color/colorTextPrimary"
+        android:paddingHorizontal="20dp"
+        android:layout_marginBottom="16dp" />
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingBottom="32dp">
+
+            <!-- Generating state -->
+            <LinearLayout
+                android:id="@+id/layoutQuizGenerating"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:padding="32dp"
+                android:visibility="gone">
+
+                <ProgressBar
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginEnd="12dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/quiz_generating"
+                    android:textSize="14sp"
+                    android:textColor="@color/colorTextSecondary" />
+
+            </LinearLayout>
+
+            <!-- Questions container (populated dynamically) -->
+            <LinearLayout
+                android:id="@+id/layoutQuizQuestions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone" />
+
+            <!-- Submit button -->
+            <Button
+                android:id="@+id/btnSubmitQuiz"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="@string/quiz_submit"
+                android:textColor="@color/markCompleteBtnText"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_mark_complete_btn"
+                android:layout_marginTop="16dp"
+                android:enabled="false"
+                android:alpha="0.5"
+                android:visibility="gone" />
+
+            <!-- Result card -->
+            <LinearLayout
+                android:id="@+id/layoutQuizResult"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:layout_marginTop="8dp"
+                android:visibility="gone">
+
+                <!-- Pass / Fail indicator row -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="8dp">
+
+                    <TextView
+                        android:id="@+id/tvResultIcon"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/step_done_icon"
+                        android:textSize="20sp"
+                        android:textColor="@color/quizPassText"
+                        android:layout_marginEnd="10dp" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tvResultTitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/quiz_passed"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/quizPassText" />
+
+                        <TextView
+                            android:id="@+id/tvResultScore"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/quiz_score_placeholder"
+                            android:textSize="13sp"
+                            android:textColor="@color/colorTextSecondary" />
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvPassThreshold"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textSize="12sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:visibility="gone"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Try Again button (shown on fail) -->
+                <Button
+                    android:id="@+id/btnTryAgain"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:text="@string/quiz_try_again"
+                    android:textColor="@color/colorTextPrimary"
+                    android:backgroundTint="#F5F5F5"
+                    android:layout_marginBottom="12dp"
+                    android:visibility="gone" />
+
+                <!-- Toggle breakdown -->
+                <Button
+                    android:id="@+id/btnToggleBreakdown"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/quiz_breakdown"
+                    android:textColor="@color/colorPrimary"
+                    android:textSize="13sp"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Breakdown container (populated dynamically) -->
+                <LinearLayout
+                    android:id="@+id/layoutBreakdown"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+</LinearLayout>
