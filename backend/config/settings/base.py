@@ -1,0 +1,316 @@
+"""
+Base settings shared across all environments.
+All secrets are read from environment variables via django-environ.
+Never hardcode credentials here.
+"""
+from pathlib import Path
+from datetime import timedelta
+import environ
+
+# Base directory is backend/
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+
+# Initialize environ and read .env file
+env = environ.Env()
+environ.Env.read_env(BASE_DIR / '.env')
+
+# ===========================================================================
+# Core
+# ===========================================================================
+SECRET_KEY = env('SECRET_KEY')
+DEBUG = env.bool('DEBUG', default=False)
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
+
+# Custom user model — must be set before any migrations
+AUTH_USER_MODEL = 'accounts.CustomUser'
+
+# ===========================================================================
+# Installed Apps
+# ===========================================================================
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+
+    # Third-party
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
+    'corsheaders',
+    'channels',
+    'django_filters',
+    'anymail',
+
+    # Local apps
+    'apps.accounts',
+    'apps.onboarding',
+    'apps.roadmaps',
+    'apps.ai_assistant',
+    'apps.resumes',
+    'apps.resources',
+    'apps.jobs',
+    'apps.universities',
+    'apps.certifications',
+    'apps.gamification',
+]
+
+MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',  # Must be before CommonMiddleware
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+ROOT_URLCONF = 'config.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [BASE_DIR / 'templates'],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = 'config.asgi.application'
+
+# ===========================================================================
+# Database — Neon PostgreSQL via DATABASE_URL env var
+# ===========================================================================
+DATABASES = {
+    'default': env.db('DATABASE_URL')
+}
+# Neon requires SSL
+DATABASES['default'].setdefault('OPTIONS', {})
+DATABASES['default']['OPTIONS']['sslmode'] = 'require'
+
+# ===========================================================================
+# Redis + Django Channels
+# ===========================================================================
+REDIS_URL = env('REDIS_URL', default='redis://localhost:6379/0')
+
+# Pass the URL directly — redis-py recognises the rediss:// scheme and uses
+# SSLConnection internally. Passing explicit ssl=True kwargs to the connection
+# class fails on redis-py 4.4+ because AbstractConnection no longer accepts
+# that argument (only SSLConnection does).
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [REDIS_URL],
+        },
+    },
+}
+
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': REDIS_URL,
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+    }
+}
+
+# ===========================================================================
+# Auth & Password Validation
+# ===========================================================================
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
+
+# ===========================================================================
+# Django REST Framework
+# ===========================================================================
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 10,
+    'DEFAULT_RENDERER_CLASSES': [
+        'djangorestframework_camel_case.render.CamelCaseJSONRenderer',
+    ],
+    'DEFAULT_PARSER_CLASSES': [
+        'djangorestframework_camel_case.parser.CamelCaseJSONParser',
+        'rest_framework.parsers.MultiPartParser',
+        'rest_framework.parsers.FormParser',
+    ],
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/day',
+        'user': '1000/day',
+        'register': '5/hour',
+        'login': '10/hour',
+        'password_reset': '5/hour',
+    },
+}
+
+# ===========================================================================
+# JWT (djangorestframework-simplejwt)
+# Role is embedded in the token — no extra DB call needed on the frontend
+# ===========================================================================
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=env.int('JWT_ACCESS_TOKEN_LIFETIME_MINUTES', default=60)),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=env.int('JWT_REFRESH_TOKEN_LIFETIME_DAYS', default=7)),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    # Custom serializer adds 'role' and 'email' to the token
+    'TOKEN_OBTAIN_SERIALIZER': 'apps.accounts.serializers.RoleTokenObtainPairSerializer',
+}
+
+# ===========================================================================
+# CORS — Allow React frontend to call this API
+# ===========================================================================
+CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=['http://localhost:5173'])
+CORS_ALLOW_CREDENTIALS = True
+
+# ===========================================================================
+# Static & Media Files
+# ===========================================================================
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+# ===========================================================================
+# Internationalization
+# ===========================================================================
+LANGUAGE_CODE = 'en-us'
+TIME_ZONE = 'Asia/Manila'
+USE_I18N = True
+USE_TZ = True
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ===========================================================================
+# Email — Brevo HTTP API (anymail) when BREVO_API_KEY is set.
+# SMTP is intentionally NOT used — Render free tier blocks outbound SMTP ports.
+# Console backend is the dev/CI fallback (prints to stdout, never sends).
+# Get your API key: Brevo dashboard → SMTP & API → API Keys → Generate
+# ===========================================================================
+_brevo_api_key = env('BREVO_API_KEY', default='')
+
+if _brevo_api_key:
+    EMAIL_BACKEND = 'anymail.backends.brevo.EmailBackend'
+    ANYMAIL = {'BREVO_API_KEY': _brevo_api_key}
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='CodeCompass <noreply@codecompass.app>')
+
+FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:5173')
+
+# ===========================================================================
+# External API Keys — read from env only, never hardcoded
+# ===========================================================================
+GROQ_API_KEYS = [k.strip() for k in env('GROQ_API_KEYS', default='').split(',') if k.strip()]
+YOUTUBE_API_KEY = env('YOUTUBE_API_KEY', default='')
+# Ranker min-score floor (see apps/resources/youtube_client.py). Lower to -99
+# to disable the floor; raise for a stricter quality gate.
+YOUTUBE_MIN_SCORE = env.int('YOUTUBE_MIN_SCORE', default=0)
+GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID', default='')
+GOOGLE_CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET', default='')
+# Job APIs — priority: Careerjet HTTP (primary) → Jooble (fallback 1) → JSearch (fallback 2)
+CAREERJET_AFFID = env('CAREERJET_AFFID', default='')
+JOOBLE_API_KEY = env('JOOBLE_API_KEY', default='')
+JSEARCH_RAPIDAPI_KEY = env('JSEARCH_RAPIDAPI_KEY', default='')
+
+# ===========================================================================
+# Logging — structured output for Render/production log tailing
+# ===========================================================================
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {name} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'ai_assistant': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'channels': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'daphne': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
+
+# ===========================================================================
+# Celery
+# ===========================================================================
+CELERY_BROKER_URL = REDIS_URL
+CELERY_RESULT_BACKEND = REDIS_URL
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'Asia/Manila'
+
+# Upstash / production Redis uses rediss:// (SSL). Celery requires an explicit
+# ssl_cert_reqs value — without it the backend raises ValueError and crashes
+# any view that calls task.delay(). CERT_NONE keeps encryption but skips cert
+# verification, which is fine for managed providers. Local redis:// is unaffected.
+if REDIS_URL.startswith('rediss://'):
+    import ssl
+    CELERY_REDIS_BACKEND_USE_SSL = {'ssl_cert_reqs': ssl.CERT_NONE}
+    CELERY_BROKER_TRANSPORT_OPTIONS = {'ssl_cert_reqs': ssl.CERT_NONE}

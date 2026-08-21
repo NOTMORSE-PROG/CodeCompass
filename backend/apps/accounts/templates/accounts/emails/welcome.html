@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Welcome to CodeCompass!</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:'Segoe UI',Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f5;padding:40px 0;">
+    <tr>
+      <td align="center">
+        <table width="560" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td style="background:#4f46e5;padding:32px 40px;text-align:center;">
+              <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.5px;">Welcome to CodeCompass!</h1>
+              <p style="margin:4px 0 0;color:#c7d2fe;font-size:13px;">Your AI-powered career guide</p>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td style="padding:40px 40px 32px;">
+              <p style="margin:0 0 16px;font-size:16px;color:#111827;">Hi {{ user.first_name }},</p>
+              <p style="margin:0 0 24px;font-size:15px;color:#374151;line-height:1.6;">
+                You're in! CodeCompass is your AI-powered guide to a career in tech — built specifically for CCS students in the Philippines.
+              </p>
+
+              <p style="margin:0 0 12px;font-size:15px;color:#374151;font-weight:600;">Here's what you can do:</p>
+              <table cellpadding="0" cellspacing="0" style="margin:0 0 28px;width:100%;">
+                <tr>
+                  <td style="padding:10px 0;border-bottom:1px solid #f3f4f6;">
+                    <span style="font-size:18px;">&#128506;</span>
+                    <span style="font-size:14px;color:#374151;margin-left:10px;"><strong>Generate a Roadmap</strong> — get a personalized learning path based on your goals</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 0;border-bottom:1px solid #f3f4f6;">
+                    <span style="font-size:18px;">&#129302;</span>
+                    <span style="font-size:14px;color:#374151;margin-left:10px;"><strong>AI Career Chat</strong> — ask anything about careers, skills, or the tech industry</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 0;border-bottom:1px solid #f3f4f6;">
+                    <span style="font-size:18px;">&#128196;</span>
+                    <span style="font-size:14px;color:#374151;margin-left:10px;"><strong>Build your Resume</strong> — AI-enhanced resume editor with ATS scoring</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 0;">
+                    <span style="font-size:18px;">&#127942;</span>
+                    <span style="font-size:14px;color:#374151;margin-left:10px;"><strong>Earn XP &amp; Badges</strong> — level up as you complete your roadmap</span>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Button -->
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="background:#4f46e5;border-radius:6px;">
+                    <a href="{{ app_url }}/app/dashboard" style="display:inline-block;padding:14px 32px;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;">Go to my Dashboard</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background:#f9fafb;padding:20px 40px;border-top:1px solid #e5e7eb;text-align:center;">
+              <p style="margin:0;font-size:12px;color:#9ca3af;">&copy; 2025 CodeCompass. Built for CCS students in the Philippines.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
