@@ -1,0 +1,352 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <!-- Drag handle -->
+    <View
+        android:layout_width="40dp"
+        android:layout_height="4dp"
+        android:background="@drawable/bg_bottom_sheet_handle"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="16dp" />
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="20dp"
+            android:paddingBottom="32dp">
+
+            <!-- Node header row: icon + type badge + status badge -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:baselineAligned="false"
+                android:layout_marginBottom="12dp">
+
+                <!-- Status icon circle -->
+                <FrameLayout
+                    android:id="@+id/frameNodeIconBs"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:background="@drawable/bg_node_icon_circle"
+                    android:layout_marginEnd="12dp">
+
+                    <ImageView
+                        android:id="@+id/ivNodeLockBs"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:layout_gravity="center"
+                        android:src="@drawable/ic_lock"
+                        android:contentDescription="@null"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/tvNodeOrderBs"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:text="@string/node_number_one"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/nodeIconAvailableFg"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/tvNodeCheckBs"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:text="@string/step_done_icon"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:visibility="gone" />
+
+                </FrameLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvNodeTypeBadgeBs"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/node_skill_tag"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/nodeBadgeSkillText"
+                        android:background="@drawable/bg_rounded_badge"
+                        android:paddingHorizontal="7dp"
+                        android:paddingVertical="3dp"
+                        android:layout_marginBottom="6dp" />
+
+                    <TextView
+                        android:id="@+id/tvNodeStatusBadgeBs"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/node_in_progress"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/statusInProgressText"
+                        android:background="@drawable/bg_status_pill"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="4dp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- Node title -->
+            <TextView
+                android:id="@+id/tvNodeTitleBs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/node_title_placeholder"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="@color/colorTextPrimary"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Metadata: hours · dots · label · +XP -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:id="@+id/tvNodeHoursBs"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/node_duration_placeholder"
+                    android:textSize="13sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:layout_marginEnd="8dp" />
+
+                <LinearLayout
+                    android:id="@+id/layoutDifficultyDotsBs"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginEnd="6dp">
+
+                    <View android:id="@+id/bsDot1" android:layout_width="8dp" android:layout_height="8dp" android:layout_marginEnd="2dp" android:background="@drawable/bg_circle_gray" />
+                    <View android:id="@+id/bsDot2" android:layout_width="8dp" android:layout_height="8dp" android:layout_marginEnd="2dp" android:background="@drawable/bg_circle_gray" />
+                    <View android:id="@+id/bsDot3" android:layout_width="8dp" android:layout_height="8dp" android:layout_marginEnd="2dp" android:background="@drawable/bg_circle_gray" />
+                    <View android:id="@+id/bsDot4" android:layout_width="8dp" android:layout_height="8dp" android:layout_marginEnd="2dp" android:background="@drawable/bg_circle_gray" />
+                    <View android:id="@+id/bsDot5" android:layout_width="8dp" android:layout_height="8dp" android:background="@drawable/bg_circle_gray" />
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvDifficultyLabelBs"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/node_difficulty_placeholder"
+                    android:textSize="13sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:id="@+id/tvXpRewardBs"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/xp_reward_75"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorOnPrimary"
+                    android:background="@drawable/bg_status_pill"
+                    android:backgroundTint="@color/colorPrimary"
+                    android:paddingHorizontal="8dp"
+                    android:paddingVertical="3dp" />
+
+            </LinearLayout>
+
+            <!-- Separator -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/dividerGray"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Description -->
+            <TextView
+                android:id="@+id/tvNodeDescriptionBs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="14sp"
+                android:lineSpacingMultiplier="1.5"
+                android:textColor="@color/colorTextSecondary"
+                android:layout_marginBottom="20dp"
+                android:visibility="gone" />
+
+            <!-- Separator before curriculum (only shown if resources exist) -->
+            <View
+                android:id="@+id/dividerCurriculum"
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@color/dividerGray"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone" />
+
+            <!-- Curriculum section header + progress -->
+            <LinearLayout
+                android:id="@+id/layoutCurriculumHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="8dp"
+                android:visibility="gone">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="6dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/roadmap_curriculum"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/colorTextPrimary" />
+
+                    <TextView
+                        android:id="@+id/tvCurriculumProgress"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/node_progress_placeholder"
+                        android:textSize="12sp"
+                        android:textColor="@color/colorTextSecondary" />
+
+                </LinearLayout>
+
+                <!-- Curriculum progress bar -->
+                <ProgressBar
+                    android:id="@+id/progressCurriculum"
+                    style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+                    android:layout_width="match_parent"
+                    android:layout_height="3dp"
+                    android:progressDrawable="@drawable/bg_progress_bar_yellow"
+                    android:max="100"
+                    android:progress="0" />
+
+            </LinearLayout>
+
+            <!-- Fetching resources indicator -->
+            <LinearLayout
+                android:id="@+id/layoutFetchingResources"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="12dp"
+                android:visibility="gone">
+
+                <ProgressBar
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/roadmap_loading_resources"
+                    android:textSize="13sp"
+                    android:textColor="@color/colorTextSecondary" />
+
+            </LinearLayout>
+
+            <!-- Quiz generating indicator (shown while quiz API call is in flight) -->
+            <LinearLayout
+                android:id="@+id/layoutQuizGenerating"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="12dp"
+                android:visibility="gone">
+
+                <ProgressBar
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:layout_marginEnd="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/quiz_generating_loading"
+                    android:textSize="13sp"
+                    android:textColor="@color/colorTextSecondary" />
+
+            </LinearLayout>
+
+            <!-- Resource list -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerResources"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Mark Complete button -->
+            <Button
+                android:id="@+id/btnMarkComplete"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="@string/roadmap_mark_complete"
+                android:textColor="@color/markCompleteBtnText"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_mark_complete_btn"
+                android:visibility="gone" />
+
+            <!-- Quiz gate info (shown when quiz not yet passed) -->
+            <TextView
+                android:id="@+id/tvQuizGateInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/roadmap_complete_quiz_first"
+                android:textSize="13sp"
+                android:textColor="@color/colorTextSecondary"
+                android:gravity="center"
+                android:paddingVertical="12dp"
+                android:visibility="gone" />
+
+            <!-- Completed date (shown when COMPLETED) -->
+            <TextView
+                android:id="@+id/tvCompletedDate"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="13sp"
+                android:textColor="@color/completedGreen"
+                android:gravity="center"
+                android:paddingVertical="12dp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+    </androidx.core.widget.NestedScrollView>
+
+</LinearLayout>

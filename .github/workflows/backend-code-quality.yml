@@ -1,0 +1,33 @@
+name: Backend Code Quality
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-code-quality.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-code-quality.yml'
+
+jobs:
+  lint:
+    name: Backend lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Run ruff
+        # The imported backend has an established style baseline. Keep this
+        # consolidation gate focused on errors that can break Python execution.
+        run: ruff check backend --exclude venv --exclude migrations --select E9,F63,F7,F82
+

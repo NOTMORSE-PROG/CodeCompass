@@ -1,0 +1,559 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <!-- ── LOADING / SUBMITTING STATE ───────────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/layoutLoading"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp">
+
+        <ProgressBar
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:indeterminateTint="@color/colorPrimary"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:id="@+id/tvLoadingLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/quiz_generating_full"
+            android:textSize="14sp"
+            android:textColor="@color/colorTextSecondary" />
+
+    </LinearLayout>
+
+    <!-- ── ACTIVE QUIZ STATE ────────────────────────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/layoutActiveQuiz"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <!-- Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@color/colorSurface"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp"
+            android:elevation="2dp">
+
+            <TextView
+                android:id="@+id/tvQuestionNumber"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/quiz_question_progress"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/colorTextPrimary" />
+
+            <TextView
+                android:id="@+id/tvLeaveQuiz"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/quiz_leave"
+                android:textSize="13sp"
+                android:textColor="@color/colorTextSecondary"
+                android:padding="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground" />
+
+        </LinearLayout>
+
+        <!-- Question progress bar (yellow, thin) -->
+        <ProgressBar
+            android:id="@+id/progressQuestion"
+            style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:progressDrawable="@drawable/bg_progress_bar_yellow"
+            android:max="100"
+            android:progress="0" />
+
+        <!-- Timer bar (color changed programmatically: green → yellow → red) -->
+        <ProgressBar
+            android:id="@+id/progressTimer"
+            style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+            android:layout_width="match_parent"
+            android:layout_height="6dp"
+            android:max="100"
+            android:progress="100" />
+
+        <!-- Scrollable question + options area -->
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <!-- Timer digit (right-aligned, large) -->
+                <TextView
+                    android:id="@+id/tvTimer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/quiz_timer_default"
+                    android:textSize="28sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorOnlineGreen"
+                    android:gravity="end"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Question card -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@color/colorSurface"
+                    android:padding="16dp"
+                    android:layout_marginBottom="16dp"
+                    android:elevation="1dp">
+
+                    <TextView
+                        android:id="@+id/tvQuestion"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/colorTextPrimary"
+                        android:lineSpacingMultiplier="1.4" />
+
+                </LinearLayout>
+
+                <!-- Option A -->
+                <LinearLayout
+                    android:id="@+id/layoutOptionA"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_quiz_option_normal"
+                    android:padding="12dp"
+                    android:layout_marginBottom="8dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <TextView
+                        android:id="@+id/tvOptionAKey"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:text="@string/quiz_option_a"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/colorTextSecondary"
+                        android:background="@drawable/bg_circle_gray"
+                        android:gravity="center"
+                        android:layout_marginEnd="12dp" />
+
+                    <TextView
+                        android:id="@+id/tvOptionAText"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text=""
+                        android:textSize="14sp"
+                        android:textColor="@color/colorTextPrimary" />
+
+                </LinearLayout>
+
+                <!-- Option B -->
+                <LinearLayout
+                    android:id="@+id/layoutOptionB"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_quiz_option_normal"
+                    android:padding="12dp"
+                    android:layout_marginBottom="8dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <TextView
+                        android:id="@+id/tvOptionBKey"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:text="@string/quiz_option_b"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/colorTextSecondary"
+                        android:background="@drawable/bg_circle_gray"
+                        android:gravity="center"
+                        android:layout_marginEnd="12dp" />
+
+                    <TextView
+                        android:id="@+id/tvOptionBText"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text=""
+                        android:textSize="14sp"
+                        android:textColor="@color/colorTextPrimary" />
+
+                </LinearLayout>
+
+                <!-- Option C -->
+                <LinearLayout
+                    android:id="@+id/layoutOptionC"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_quiz_option_normal"
+                    android:padding="12dp"
+                    android:layout_marginBottom="8dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <TextView
+                        android:id="@+id/tvOptionCKey"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:text="@string/quiz_option_c"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/colorTextSecondary"
+                        android:background="@drawable/bg_circle_gray"
+                        android:gravity="center"
+                        android:layout_marginEnd="12dp" />
+
+                    <TextView
+                        android:id="@+id/tvOptionCText"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text=""
+                        android:textSize="14sp"
+                        android:textColor="@color/colorTextPrimary" />
+
+                </LinearLayout>
+
+                <!-- Option D -->
+                <LinearLayout
+                    android:id="@+id/layoutOptionD"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_quiz_option_normal"
+                    android:padding="12dp"
+                    android:layout_marginBottom="16dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <TextView
+                        android:id="@+id/tvOptionDKey"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:text="@string/quiz_option_d"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/colorTextSecondary"
+                        android:background="@drawable/bg_circle_gray"
+                        android:gravity="center"
+                        android:layout_marginEnd="12dp" />
+
+                    <TextView
+                        android:id="@+id/tvOptionDText"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text=""
+                        android:textSize="14sp"
+                        android:textColor="@color/colorTextPrimary" />
+
+                </LinearLayout>
+
+                <!-- Next → / Submit Quiz button -->
+                <Button
+                    android:id="@+id/btnNextOrSubmit"
+                    style="@style/Widget.MaterialComponents.Button"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="@string/quiz_next"
+                    android:textColor="@color/colorOnPrimary"
+                    android:backgroundTint="@color/colorPrimary"
+                    android:enabled="false"
+                    android:alpha="0.4"
+                    android:layout_marginBottom="16dp" />
+
+            </LinearLayout>
+        </ScrollView>
+
+    </LinearLayout>
+
+    <!-- ── RESULTS STATE ────────────────────────────────────────────────────── -->
+    <ScrollView
+        android:id="@+id/scrollResults"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Result banner -->
+            <LinearLayout
+                android:id="@+id/layoutResultBanner"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="16dp"
+                android:layout_marginBottom="16dp"
+                android:background="@color/quizPassBg">
+
+                <TextView
+                    android:id="@+id/tvResultIcon"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/step_done_icon"
+                    android:textSize="32sp"
+                    android:textColor="@color/quizPassText"
+                    android:layout_marginEnd="16dp" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvResultTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/quiz_passed_label"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/quizPassText" />
+
+                    <TextView
+                        android:id="@+id/tvResultScore"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text=""
+                        android:textSize="13sp"
+                        android:textColor="@color/colorTextSecondary"
+                        android:layout_marginTop="2dp" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- Per-question breakdown (populated in Java) -->
+            <LinearLayout
+                android:id="@+id/containerBreakdown"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Action buttons -->
+            <LinearLayout
+                android:id="@+id/layoutResultActions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="24dp">
+
+                <!-- Passed: Back to Lesson -->
+                <Button
+                    android:id="@+id/btnBackToLesson"
+                    style="@style/Widget.MaterialComponents.Button"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="@string/quiz_back_to_lesson"
+                    android:textColor="@color/colorOnPrimary"
+                    android:backgroundTint="@color/colorPrimary"
+                    android:visibility="gone" />
+
+                <!-- Failed: Try Again -->
+                <Button
+                    android:id="@+id/btnTryAgain"
+                    style="@style/Widget.MaterialComponents.Button"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="@string/quiz_try_again"
+                    android:textColor="@color/colorOnPrimary"
+                    android:backgroundTint="@color/colorPrimary"
+                    android:layout_marginBottom="8dp"
+                    android:visibility="gone" />
+
+                <!-- Failed: Back to Lesson (outline) -->
+                <Button
+                    android:id="@+id/btnBackToLessonFail"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="@string/quiz_back_to_lesson"
+                    android:textColor="@color/colorTextPrimary"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- ── Phase 4: Final Assessment Overview ──────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/layoutOverview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="24dp"
+        android:paddingVertical="32dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/final_assessment_phase_label"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.15"
+            android:textColor="@color/colorTextSecondary" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/final_assessment_title"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@color/colorTextPrimary"
+            android:layout_marginTop="4dp" />
+
+        <TextView
+            android:id="@+id/tvOverviewSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="13sp"
+            android:textColor="@color/colorTextSecondary"
+            android:layout_marginTop="2dp" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/dividerGray"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="20dp" />
+
+        <TableLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:stretchColumns="1">
+
+            <TableRow android:layout_marginBottom="12dp">
+                <TextView
+                    android:text="@string/final_assessment_overview_questions_label"
+                    android:textSize="13sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:paddingStart="0dp"
+                    android:paddingEnd="20dp" />
+                <TextView
+                    android:text="@string/final_assessment_overview_questions_value"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorTextPrimary" />
+            </TableRow>
+
+            <TableRow android:layout_marginBottom="12dp">
+                <TextView
+                    android:text="@string/final_assessment_overview_time_label"
+                    android:textSize="13sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:paddingStart="0dp"
+                    android:paddingEnd="20dp" />
+                <TextView
+                    android:text="@string/final_assessment_overview_time_value"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorTextPrimary" />
+            </TableRow>
+
+            <TableRow android:layout_marginBottom="12dp">
+                <TextView
+                    android:text="@string/final_assessment_overview_pass_label"
+                    android:textSize="13sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:paddingStart="0dp"
+                    android:paddingEnd="20dp" />
+                <TextView
+                    android:text="@string/final_assessment_overview_pass_value"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorTextPrimary" />
+            </TableRow>
+
+            <TableRow>
+                <TextView
+                    android:text="@string/final_assessment_overview_reward_label"
+                    android:textSize="13sp"
+                    android:textColor="@color/colorTextSecondary"
+                    android:paddingStart="0dp"
+                    android:paddingEnd="20dp" />
+                <TextView
+                    android:text="@string/final_assessment_overview_reward_value"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/colorTextPrimary" />
+            </TableRow>
+
+        </TableLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_warning_box"
+            android:padding="12dp"
+            android:text="@string/final_assessment_overview_warning"
+            android:textSize="12sp"
+            android:textColor="#92400E"
+            android:layout_marginTop="20dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnBeginAssessment"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="@color/colorPrimary"
+            android:padding="14dp"
+            android:text="@string/final_assessment_btn_begin"
+            android:textColor="@color/colorOnPrimary"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp" />
+
+        <TextView
+            android:id="@+id/tvOverviewBack"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:text="@string/final_assessment_btn_back"
+            android:textSize="13sp"
+            android:textColor="@color/colorTextSecondary"
+            android:paddingVertical="12dp"
+            android:layout_marginTop="4dp" />
+
+    </LinearLayout>
+
+</merge>

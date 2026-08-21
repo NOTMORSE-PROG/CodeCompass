@@ -1,0 +1,652 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="app_name">CodeCompass</string>
+    <string name="app_tagline">Navigate Your Tech Career</string>
+
+    <!-- Auth common -->
+    <string name="label_email">Email</string>
+    <string name="label_password">Password</string>
+    <string name="label_first_name">First Name</string>
+    <string name="label_last_name">Last Name</string>
+    <string name="label_confirm_password">Confirm Password</string>
+
+    <!-- Login -->
+    <string name="btn_login">Log In</string>
+    <string name="link_no_account">Don\'t have an account? <b>Register</b></string>
+    <string name="logging_in">Logging in…</string>
+    <string name="or_sign_in_with">or sign in with</string>
+    <string name="btn_google_sign_in">Sign in with Google</string>
+    <string name="btn_google_sign_up">Sign up with Google</string>
+    <string name="error_google_sign_in">Google sign-in failed. Try again.</string>
+
+    <!-- Register -->
+    <string name="btn_register">Create Account</string>
+    <string name="link_have_account">Already have an account? <b>Log In</b></string>
+    <string name="registering">Creating account…</string>
+
+    <!-- Validation errors -->
+    <string name="error_field_required">This field is required</string>
+    <string name="error_invalid_email">Please enter a valid email address</string>
+    <string name="error_password_short">Password must be at least 8 characters</string>
+    <string name="error_passwords_no_match">Passwords do not match</string>
+    <string name="error_name_short">Must be at least 2 characters</string>
+    <string name="error_network">Network error. Check your connection.</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_title">Let\'s Get to Know You</string>
+    <string name="onboarding_subtitle">Chat with our AI to personalise your roadmap</string>
+    <string name="hint_message">Type your message…</string>
+    <string name="btn_send">Send</string>
+    <string name="btn_build_roadmap">Build My Roadmap →</string>
+    <string name="onboarding_guide">Onboarding Guide</string>
+    <string name="connecting">Connecting to CodeCompass…</string>
+    <string name="onboarding_completing">Building your roadmap…</string>
+    <string name="error_chat_not_ready">Chat not ready yet, please wait…</string>
+    <string name="error_connection_lost">Connection lost. Reconnecting…</string>
+    <string name="error_server_starting">Server is starting up, please wait…</string>
+    <string name="error_server_timeout">Could not reach server. Tap to retry.</string>
+    <string name="step_chat_done">Chat completed</string>
+    <string name="step_analyzing">Analyzing your answers…</string>
+    <string name="step_building">Building your personalized roadmap…</string>
+    <string name="almost_there">Almost there!</string>
+    <string name="roadmap_generating">Hang tight, we\'re building your roadmap…</string>
+
+    <!-- Dashboard -->
+    <string name="register_subtitle">Create your account</string>
+    <string name="welcome_placeholder">Welcome back!</string>
+    <string name="welcome_back">Welcome back, %s!</string>
+    <string name="ai_status_online">● Online</string>
+    <string name="xp_label">XP points earned</string>
+    <string name="xp_default">0 XP</string>
+    <string name="roadmap_pct_default">0% completed</string>
+    <string name="step_done_icon" translatable="false">✓</string>
+    <string name="dashboard_subtitle">Ready to level up your skills today?</string>
+    <string name="card_roadmap_title">My Roadmap</string>
+    <string name="card_roadmap_empty">No roadmap yet — complete onboarding first!</string>
+    <string name="card_ai_title">AI Career Assistant</string>
+    <string name="card_ai_subtitle">Ask anything about your career path</string>
+    <string name="card_ai_status">Online — Ready to help!</string>
+
+    <string name="xp_points">%,d XP</string>
+    <string name="day_streak">%d-day streak</string>
+    <string name="roadmap_completion">%d%% completed</string>
+    <string name="next_steps">Next Steps</string>
+    <string name="view_full_roadmap">View full roadmap →</string>
+    <string name="quick_actions">Quick Actions</string>
+    <string name="action_roadmap">View Roadmap</string>
+    <string name="action_ai_chat">Chat with AI</string>
+    <string name="action_jobs">Find Jobs</string>
+    <string name="action_achievements">Achievements</string>
+    <string name="btn_logout">Logout</string>
+    <string name="coming_soon">Coming soon!</string>
+    <string name="node_type_hours_xp">%1$s • %2$dh • %3$d XP</string>
+    <string name="start_arrow">Start →</string>
+    <string name="cc_avatar">CC</string>
+    <string name="server_warmup">Server is waking up… this may take 60 s</string>
+    <string name="retry">Retry</string>
+
+    <string name="action_roadmap_sub">Plan your path</string>
+    <string name="action_ai_chat_sub">Get answers instantly</string>
+    <string name="action_jobs_sub">Browse PH listings</string>
+    <string name="action_achievements_sub">Track your badges</string>
+    <string name="roadmap_continue">Continue →</string>
+    <string name="stat_label_streak">Day Streak</string>
+    <string name="stat_label_xp">Total XP</string>
+    <string name="stat_label_roadmap">Roadmap</string>
+    <string name="warmup_banner_msg">Server is starting up, this may take a moment…</string>
+
+    <!-- Roadmap -->
+    <string name="roadmap_title">My Roadmap</string>
+    <string name="roadmap_no_roadmap_title">No Roadmap Yet</string>
+    <string name="roadmap_no_roadmap_body">Complete the onboarding chat to generate your personalized AI learning roadmap.</string>
+    <string name="roadmap_generate_btn">Generate My Roadmap →</string>
+    <string name="roadmap_all_locked_msg">All nodes are locked — tap Repair to unlock your first step.</string>
+    <string name="roadmap_repair_btn">Fix It</string>
+    <string name="roadmap_loading_resources">Finding videos for this topic…</string>
+    <string name="roadmap_mark_complete">Mark Complete</string>
+    <string name="roadmap_marking">Updating…</string>
+    <string name="roadmap_curriculum">Curriculum</string>
+    <string name="roadmap_complete_quiz_first">Pass all video quizzes to complete this node.</string>
+    <string name="roadmap_node_status_locked">Locked</string>
+    <string name="roadmap_node_status_available">Available</string>
+    <string name="roadmap_node_status_in_progress">In Progress</string>
+    <string name="roadmap_node_status_completed">Done</string>
+    <string name="roadmap_node_complete_msg">Node Complete!</string>
+    <string name="roadmap_error_retry">Retry</string>
+    <string name="roadmap_status_active">ACTIVE</string>
+    <string name="roadmap_status_completed">COMPLETED</string>
+    <string name="roadmap_status_generating">GENERATING</string>
+    <!-- Quiz -->
+    <string name="quiz_title">Quick Check</string>
+    <string name="quiz_generating">Generating quiz…</string>
+    <string name="quiz_take">Take Quiz</string>
+    <string name="quiz_submit">Submit Answers</string>
+    <string name="quiz_passed">Passed!</string>
+    <string name="quiz_failed">Not quite.</string>
+    <string name="quiz_try_again">Try Again</string>
+    <string name="quiz_breakdown">Show answer breakdown</string>
+    <string name="quiz_generating_loading">Generating quiz…</string>
+
+    <!-- Quiz — full-screen QuizActivity strings -->
+    <string name="quiz_question_of">Question %1$d of %2$d</string>
+    <string name="quiz_leave">Leave Quiz</string>
+    <string name="quiz_next">Next →</string>
+    <string name="quiz_submit_final">Submit Quiz</string>
+    <string name="quiz_generating_full">Generating your quiz…</string>
+    <string name="quiz_checking">Checking your answers…</string>
+    <string name="quiz_passed_label">Quiz Passed!</string>
+    <string name="quiz_failed_label">Not Quite</string>
+    <string name="quiz_passed_score" tools:ignore="PluralsCandidate">%1$d / %2$d correct · %3$d%%</string>
+    <string name="quiz_failed_score" tools:ignore="PluralsCandidate">%1$d / %2$d correct · need %3$d%% to pass</string>
+    <string name="quiz_back_to_lesson">Back to Lesson</string>
+
+    <!-- Video watch gate -->
+    <string name="video_watch_to_unlock">Watch 5 minutes to unlock the quiz</string>
+
+    <!-- Roadmap Next Up banner -->
+    <string name="roadmap_next_up_prefix">Next up: </string>
+    <string name="roadmap_resource_unavailable">Unavailable</string>
+
+    <!-- AI Chat -->
+    <string name="ai_chat_title">AI Career Assistant</string>
+    <string name="mode_general">General</string>
+    <string name="mode_roadmap">Roadmap</string>
+    <string name="mode_jobs">Jobs</string>
+    <string name="mode_university">University</string>
+    <string name="lang_en">EN</string>
+    <string name="lang_tl">TL</string>
+    <string name="lang_tg">TG</string>
+    <string name="ai_chat_wait_streaming">Please wait for the response to finish</string>
+    <string name="proposal_applied">Roadmap updated successfully</string>
+    <!-- Roadmap switch card -->
+    <string name="switch_card_title">Switch Career Path</string>
+    <string name="switch_card_warning_title">⚠️ Your current roadmap will be archived</string>
+    <string name="switch_card_warning_body">All progress, completed nodes, and XP earned will be preserved in your history, but you won\'t be able to continue from where you left off.</string>
+    <string name="switch_card_limit">You can only switch your learning path once per day.</string>
+    <string name="switch_card_confirm">Yes, Switch My Roadmap</string>
+    <string name="switch_card_cancel">Keep Current Roadmap</string>
+    <string name="switch_card_applied">✅ Roadmap Switched! Your new roadmap is ready. Head to the Roadmap page to get started.</string>
+    <string name="switch_card_applied_limit">You\'ve used your one switch for today. You can switch again tomorrow.</string>
+    <!-- Roadmap upskill card -->
+    <string name="upskill_card_title">⬆️ Level Up Your Roadmap</string>
+    <string name="upskill_card_warning_title">Your current roadmap will be archived</string>
+    <string name="upskill_card_warning_body">All progress, completed nodes, and XP earned will be preserved. A new, more advanced roadmap will be generated for the same career path.</string>
+    <string name="upskill_card_limit">You can only upskill once per day.</string>
+    <string name="upskill_card_confirm">⬆️ Yes, Level Up</string>
+    <string name="upskill_card_cancel">Not yet</string>
+    <string name="upskill_card_applied">✅ Advanced Roadmap Ready! Head to the Roadmap page to get started.</string>
+    <string name="upskill_card_applied_limit">You\'ve used your one upskill for today. You can upskill again tomorrow.</string>
+    <string name="roadmap_action_got_it">Got it</string>
+    <string name="chat_hub_title">AI Chat</string>
+    <string name="chat_hub_empty_title">No conversations yet</string>
+    <string name="chat_hub_empty_sub">Tap + to start your first chat</string>
+    <string name="chat_new">New Chat</string>
+    <string name="ai_chat_respond_in">Respond in:</string>
+    <string name="ai_welcome_general">Your AI career mentor.\nAsk me anything about tech careers, skills, or your learning path.</string>
+    <string name="ai_welcome_roadmap">Roadmap assistant.\nI can help you navigate, explain, or adjust your learning roadmap.</string>
+    <string name="ai_welcome_jobs">Job search guide.\nI know the Philippine tech job market — salaries, companies, interviews.</string>
+    <string name="ai_welcome_university">University advisor.\nChoosing between CCS programs or schools? I can help.</string>
+
+    <!-- Achievements -->
+    <string name="achievements_title">Achievements</string>
+    <string name="achievements_subtitle">Earn XP, collect badges, and compete with other students.</string>
+    <string name="achievements_total_xp">Total XP</string>
+    <string name="achievements_level_label">Level %1$d → Next level at %2$s XP</string>
+    <string name="achievements_level_current">Level %d</string>
+    <string name="achievements_xp_range">%1$s / %2$s XP</string>
+    <string name="achievements_day_streak">day streak</string>
+    <string name="achievements_streak_active">Great job! Keep logging in every day to maintain your streak.</string>
+    <string name="achievements_streak_inactive">Log in and learn every day to keep your streak going!</string>
+    <string name="achievements_badge_count" tools:ignore="PluralsCandidate">%1$d / %2$d earned</string>
+    <string name="achievements_badges_loading">Loading badges…</string>
+    <string name="achievements_xp_empty">No XP earned yet. Complete nodes and earn badges to see your history!</string>
+    <string name="achievements_leaderboard_empty">No leaderboard data yet. Start earning XP!</string>
+    <string name="achievements_leaderboard_hint">Complete nodes to earn XP and climb the board!</string>
+    <string name="achievements_period_weekly">This Week</string>
+    <string name="achievements_period_monthly">This Month</string>
+    <string name="achievements_period_all_time">All Time</string>
+
+    <!-- Certifications -->
+    <string name="certifications_title">Certifications</string>
+    <string name="certifications_subtitle">Browse and track IT certifications to boost your career.</string>
+    <string name="certifications_filter_free_only">Free Only</string>
+    <string name="certifications_track_btn">Track</string>
+    <string name="certifications_empty">No certifications match your filters.</string>
+    <string name="certifications_earned_xp">Certificate Earned! +200 XP</string>
+    <string name="certifications_how_to_title">How to Get This Certification</string>
+    <string name="certifications_skills_title">Skills You\'ll Gain</string>
+    <string name="certifications_career_title">Career Paths</string>
+    <string name="certifications_visit_official">Visit Official Page</string>
+    <string name="certifications_study_guide">Study Guide / Resources</string>
+    <string name="certifications_remove">Remove from Tracker</string>
+
+    <!-- Jobs -->
+    <string name="jobs_title">Find Jobs</string>
+    <string name="jobs_search_hint">Search jobs, companies…</string>
+    <string name="jobs_tab_all">All Jobs</string>
+    <string name="jobs_tab_saved">Saved</string>
+    <string name="jobs_empty">No jobs found. Try different filters.</string>
+    <string name="jobs_saved_empty">No saved jobs yet. Tap the bookmark on any job to save it.</string>
+    <string name="jobs_load_more">Load more</string>
+    <string name="jobs_apply">Apply Now →</string>
+    <string name="jobs_save">Save Job</string>
+    <string name="jobs_unsave">Remove from Saved</string>
+    <string name="jobs_resume_upload_title">Match jobs to your resume</string>
+    <string name="jobs_resume_upload_btn">Upload PDF</string>
+    <string name="jobs_resume_analyzing">Analyzing resume…</string>
+    <string name="jobs_resume_matches" tools:ignore="PluralsCandidate">%d matches found</string>
+    <string name="jobs_resume_too_short">Resume text is too short. Try a different PDF.</string>
+    <string name="jobs_resume_error">Could not analyze resume. Try again.</string>
+    <string name="jobs_resume_clear">Clear resume</string>
+    <string name="jobs_resume_source_title">Choose resume source</string>
+    <string name="jobs_resume_source_saved">Use a saved resume</string>
+    <string name="jobs_resume_source_loading">Loading your resumes…</string>
+    <string name="jobs_resume_source_none_hint">You haven\'t saved any resumes yet — upload a PDF below or build one in Resume Builder.</string>
+    <string name="jobs_resume_source_or">or</string>
+    <string name="jobs_resume_source_upload">Upload a PDF</string>
+    <string name="jobs_resume_source_empty_content">This resume has too little content. Add experience or skills first.</string>
+
+    <!-- Profile -->
+    <string name="profile_title">My Profile</string>
+    <string name="profile_sign_out">Sign Out</string>
+    <string name="profile_sign_out_sub">Sign out of your account</string>
+    <string name="profile_stat_xp">Total XP</string>
+    <string name="profile_stat_streak">Day Streak</string>
+    <string name="profile_stat_badges">Badges</string>
+    <string name="profile_account_settings">Account Settings</string>
+    <string name="profile_roadmap_label">MY ROADMAP</string>
+    <string name="profile_role_student">Student</string>
+    <string name="profile_role_mentor">Mentor</string>
+    <string name="profile_role_admin">Admin</string>
+    <string name="profile_change_password">Change Password</string>
+    <string name="profile_change_password_sub">Update your account password</string>
+    <string name="profile_connect_google">Connect Google Account</string>
+    <string name="profile_connect_google_sub">Sign in faster with Google</string>
+    <string name="profile_google_connected">Google account connected</string>
+    <string name="profile_google_only">You signed up with Google. Password login is not available.</string>
+    <string name="profile_pwd_dialog_title">Change Password</string>
+
+    <string name="profile_pwd_new">New Password</string>
+    <string name="profile_pwd_confirm">Confirm New Password</string>
+    <string name="profile_pwd_update">Update</string>
+    <string name="profile_pwd_success">Password changed successfully</string>
+    <string name="profile_pwd_mismatch">New passwords do not match</string>
+    <string name="profile_delete_account">Delete Account</string>
+    <string name="profile_delete_account_sub">Permanently delete your account and all data</string>
+    <string name="profile_delete_confirm_title">Delete Account?</string>
+    <string name="profile_delete_confirm_body">This will permanently delete your account, roadmap, progress, and all data. This action cannot be undone.</string>
+    <string name="profile_delete_type_hint">Type DELETE to confirm:</string>
+    <string name="profile_delete_confirm_btn">Delete Account</string>
+    <string name="profile_delete_deleting">Deleting your account…</string>
+    <string name="profile_delete_success">Account deleted successfully</string>
+    <string name="profile_delete_error">Failed to delete account. Please try again.</string>
+
+    <!-- Shared UI symbols (translatable="false" — these are icons, not words) -->
+    <string name="nav_back" translatable="false">Back</string>
+    <string name="arrow_right" translatable="false">→</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="apply">Apply</string>
+    <string name="xp_reward_75" translatable="false">+75 XP</string>
+
+    <!-- Achievements screen -->
+    <string name="achievements_xp_progress">⚡ XP Progress</string>
+    <string name="achievements_zero" translatable="false">0</string>
+    <string name="achievements_daily_streak">🔥 Daily Streak</string>
+    <string name="achievements_badges_header">🏆 Badges</string>
+    <string name="achievements_xp_activity">⚡ XP Activity</string>
+    <string name="achievements_leaderboard_header">🏆 Leaderboard</string>
+
+    <!-- AI Chat Hub screen -->
+    <string name="chat_hub_icon" translatable="false">💬</string>
+
+    <!-- Certifications screen -->
+    <string name="certifications_search_hint">Search certifications…</string>
+    <string name="certifications_loading">Loading certifications…</string>
+    <string name="certifications_recommended">Recommended for You</string>
+    <string name="certifications_empty_tracked">No tracked certifications yet.\nBrowse and tap Track to start!</string>
+
+    <!-- Dashboard screen -->
+    <!-- arrow_right defined above -->
+
+    <!-- Jobs screen -->
+    <string name="jobs_loading">Finding jobs…</string>
+
+    <!-- Quiz screen -->
+    <string name="quiz_question_progress">Question 1 of 10</string>
+    <string name="quiz_timer_seconds_format" translatable="false">%ds</string>
+    <string name="quiz_timer_default" translatable="false">15s</string>
+    <string name="quiz_result_number_format">%1$d. %2$s</string>
+    <string name="quiz_explanation_format">💡 %s</string>
+    <string name="quiz_option_a" translatable="false">A</string>
+    <string name="quiz_option_b" translatable="false">B</string>
+    <string name="quiz_option_c" translatable="false">C</string>
+    <string name="quiz_option_d" translatable="false">D</string>
+    <!-- quiz correct mark reuses step_done_icon (✓) defined above -->
+
+    <!-- Roadmap screen -->
+    <!-- dismiss defined above, xp_reward_75 defined above -->
+    <string name="roadmap_streak_format" translatable="false">🔥 %d</string>
+
+    <!-- Video Learning screen -->
+    <string name="video_timer_default" translatable="false">0:00 / 5:00</string>
+    <string name="video_locked_icon" translatable="false">🔒</string>
+
+    <!-- Cert detail bottom sheet -->
+    <string name="cert_free_badge" translatable="false">FREE</string>
+    <string name="cert_free_label">Free</string>
+    <string name="cert_paid_label">Paid</string>
+    <string name="cert_study_hours_format">~%d hrs study</string>
+    <string name="cert_study_varies">Varies</string>
+    <string name="cert_update_btn">Update</string>
+    <string name="cert_study_time">Study Time</string>
+    <string name="cert_cost">Cost</string>
+    <string name="cert_about">About</string>
+    <string name="cert_optional_paid">Optional Paid Upgrade</string>
+    <string name="cert_track_btn">Track This Certification</string>
+
+    <!-- Job detail bottom sheet -->
+    <string name="job_description_header">Job Description</string>
+    <string name="jobs_result_count" tools:ignore="PluralsCandidate">%1$d job%2$s</string>
+
+    <!-- Node detail bottom sheet -->
+    <string name="node_number_one" translatable="false">1</string>
+    <string name="node_skill_tag" translatable="false">SKILL</string>
+    <string name="node_in_progress">In Progress</string>
+    <string name="node_title_placeholder">Node Title</string>
+    <string name="node_duration_format" translatable="false">⏱ %dh</string>
+    <string name="node_duration_placeholder" translatable="false">⏱ 5h</string>
+    <string name="node_difficulty_placeholder">Beginner</string>
+    <string name="node_progress_placeholder" translatable="false">0/0 done</string>
+    <string name="node_completed_on_format">✓ Completed on %s</string>
+    <string name="node_locked_prerequisites">🔒 Complete prerequisites to unlock</string>
+
+    <!-- Quiz bottom sheet -->
+    <string name="quiz_score_placeholder" translatable="false">3/4 correct (75%)</string>
+    <string name="quiz_hide_breakdown">Hide breakdown</string>
+    <string name="quiz_question_numbered">%1$d. %2$s</string>
+    <string name="quiz_option_format">%1$s. %2$s</string>
+    <string name="quiz_explanation_bullet_format">💡 %s</string>
+
+    <!-- University detail bottom sheet -->
+    <string name="uni_location_pin" translatable="false">📍</string>
+    <string name="uni_match_score_format">%d%%</string>
+    <string name="uni_match_reason_format">• %s</string>
+    <string name="uni_location_format">%1$s, %2$s</string>
+    <string name="uni_accreditation_level">Level %d</string>
+    <string name="uni_accreditation_na">N/A</string>
+    <string name="uni_board_exam">Board Exam</string>
+    <string name="uni_duration_years_format" translatable="false">%d years</string>
+    <string name="uni_specializations_format">Specializations: %s</string>
+    <string name="uni_view_curriculum">View Curriculum ↗</string>
+
+    <!-- Edit proposal card -->
+    <string name="proposal_warning_msg">⚠️ This will reset the node\'s progress to locked. You can only replace a node once per day.</string>
+    <string name="error_replace_node_rate_limit">You can only replace a node once per day.</string>
+    <string name="error_scope_not_roadmap">Roadmap changes happen in the Roadmap tab. Switch over there to apply this.</string>
+    <string name="proposal_applied_msg">✅ Applied to your roadmap</string>
+    <string name="proposal_header_format" translatable="false">✏️ Roadmap Edit — %1$d proposal%2$s</string>
+    <string name="proposal_item_format">• %s</string>
+    <string name="switch_details_format">New path: %1$s\nCareer goal: %2$s</string>
+    <string name="upskill_plan_format">Plan: %s</string>
+
+    <!-- Job item -->
+    <string name="error_no_browser">No browser app found to open this link.</string>
+    <string name="job_match_label">Match</string>
+    <string name="job_matched_skills">Matched skills</string>
+
+    <!-- Node resource item -->
+    <string name="resource_number_placeholder" translatable="false">01</string>
+    <string name="resource_type_youtube" translatable="false">YT</string>
+    <string name="resource_title_placeholder">Resource title</string>
+    <string name="resource_duration_placeholder" translatable="false">25 min</string>
+    <string name="resource_circle_icon" translatable="false">○</string>
+
+    <!-- Resource card item -->
+    <string name="icon_link_emoji" translatable="false">🔗</string>
+
+    <!-- Roadmap milestone item -->
+    <string name="roadmap_milestone_title_placeholder">Phase 1: Foundations</string>
+
+    <!-- Roadmap subsection divider item -->
+    <string name="roadmap_subsection_divider_placeholder" translatable="false">PROJECTS</string>
+
+    <!-- Roadmap header view -->
+    <string name="roadmap_header_title">My Roadmap</string>
+    <string name="roadmap_progress_zero" translatable="false">0%</string>
+    <string name="roadmap_complete_label"> complete</string>
+    <string name="roadmap_nodes_placeholder" translatable="false">0 / 0 nodes</string>
+    <string name="roadmap_separator" translatable="false"> · </string>
+    <string name="roadmap_hours_left_placeholder" translatable="false">~0h left</string>
+    <string name="roadmap_streak_placeholder" translatable="false">🔥 0</string>
+
+    <!-- Universities -->
+    <string name="universities_title">Universities</string>
+    <string name="universities_subtitle">Find the right CS program for you</string>
+    <string name="universities_back">Back</string>
+    <string name="universities_search_hint">Search universities…</string>
+    <string name="universities_loading">Loading universities…</string>
+    <string name="universities_top_recommendations">Top Recommendations</string>
+    <string name="universities_recommendations_subtitle">Personalized based on your profile</string>
+    <string name="universities_recs_empty">No recommendations yet.\nComplete your profile to get personalized matches!</string>
+    <string name="universities_browse_empty">No universities match your filters.</string>
+    <string name="universities_ched_coe">CHED CoE</string>
+    <string name="universities_ched_cod">CHED CoD</string>
+    <string name="universities_match_score_label">Match Score</string>
+    <string name="universities_accreditation_label">Accreditation</string>
+    <string name="universities_tuition_label">Tuition Range</string>
+    <string name="universities_programs_label">Programs Offered</string>
+    <string name="universities_visit_website">Visit Official Website</string>
+    <string name="universities_match_label">match</string>
+    <string name="universities_result_count" tools:ignore="PluralsCandidate">%1$d universit%2$s</string>
+    <string name="certifications_result_count" tools:ignore="PluralsCandidate">%1$d certification%2$s</string>
+
+    <!-- Video Learning screen -->
+    <string name="video_channel_format" translatable="false">📺 %s</string>
+
+    <!-- Adapter strings -->
+    <string name="rec_track_level_format">%1$s · %2$s</string>
+    <string name="roadmap_milestone_completed_format" translatable="false">✓ %s</string>
+
+    <!-- Email Verification -->
+    <string name="verify_email_subtitle">Verify your email</string>
+    <string name="verify_email_title">Check your inbox</string>
+    <string name="verify_email_description">We sent a verification link to</string>
+    <string name="verify_email_instruction">Click the link in the email to verify your account. After verifying, tap the button below.</string>
+    <string name="verify_email_expiry">The link expires in 24 hours.</string>
+    <string name="verify_email_spam_hint">Didn\'t receive it? Check your spam folder.</string>
+    <string name="btn_resend_verification">Resend Verification Email</string>
+    <string name="btn_verified">I\'ve Verified My Email</string>
+    <string name="btn_back_to_login">Back to Login</string>
+    <string name="verify_email_resent">Verification email sent!</string>
+    <string name="verify_email_resend_wait">Resend available in %ds</string>
+    <string name="verify_email_not_yet">Email not verified yet. Please check your inbox and click the link first.</string>
+    <string name="verify_email_success">Email verified!</string>
+
+    <!-- Change Password (OTP-based) -->
+    <string name="profile_pwd_send_code_desc">We\'ll send a 6-digit verification code to your email.</string>
+    <string name="profile_pwd_send_code">Send Code</string>
+    <string name="profile_pwd_sending">Sending…</string>
+    <string name="profile_pwd_otp_sent">Code sent to your email!</string>
+    <string name="profile_pwd_enter_code">Enter the 6-digit code sent to your email.</string>
+    <string name="profile_pwd_otp_label">Verification Code</string>
+
+    <string name="profile_pwd_otp_invalid">Invalid or expired code. Request a new one.</string>
+    <string name="profile_pwd_resend_code">Resend Code</string>
+
+    <!-- AI Chat delete conversation -->
+    <string name="delete_conversation">Delete conversation</string>
+    <string name="delete_conversation_confirm_title">Delete conversation?</string>
+    <string name="delete_conversation_confirm_msg">This conversation will be permanently deleted.</string>
+    <string name="conversation_deleted">Conversation deleted</string>
+
+    <!-- Resume Builder -->
+    <string name="resume_builder_title">Resume Builder</string>
+    <string name="resume_builder_subtitle">Build ATS-optimized resumes</string>
+    <string name="resume_list_title">My Resumes</string>
+    <string name="resume_new">New Resume</string>
+    <string name="resume_new_title_hint">Resume title</string>
+    <string name="resume_create">Create Resume</string>
+    <string name="resume_empty_title">No resumes yet</string>
+    <string name="resume_empty_subtitle">Tap + below to build your first\nATS-optimized resume</string>
+    <string name="resume_create_new_title">New Resume</string>
+    <string name="resume_choose_template">Choose a Template</string>
+    <string name="resume_delete_title">Delete Resume?</string>
+    <string name="resume_delete_confirm">This resume will be permanently deleted.</string>
+    <string name="resume_deleted">Resume deleted</string>
+    <string name="resume_updated_ago">Updated %s</string>
+
+    <!-- Resume Editor -->
+    <string name="resume_tab_info">Info</string>
+    <string name="resume_tab_summary">Summary</string>
+    <string name="resume_tab_experience">Experience</string>
+    <string name="resume_tab_education">Education</string>
+    <string name="resume_tab_skills">Skills</string>
+    <string name="resume_tab_projects">Projects</string>
+    <string name="resume_tab_certs">Certs</string>
+    <string name="resume_save_saved">Saved</string>
+    <string name="resume_save_saving">Saving…</string>
+    <string name="resume_save_unsaved">Unsaved</string>
+    <string name="resume_save_error">Save failed. Try again.</string>
+
+    <!-- Resume Info tab -->
+    <string name="resume_info_name">Full Name</string>
+    <string name="resume_info_job_title">Job Title / Role</string>
+    <string name="resume_info_email">Email</string>
+    <string name="resume_info_phone">Phone</string>
+    <string name="resume_info_location">Location</string>
+    <string name="resume_info_linkedin">LinkedIn URL</string>
+    <string name="resume_info_github">GitHub URL</string>
+    <string name="resume_info_website">Portfolio / Website</string>
+
+    <!-- Resume Summary tab -->
+    <string name="resume_summary_hint">Write a professional summary…</string>
+    <string name="resume_ai_generate_summary">AI Generate Summary</string>
+    <string name="resume_summary_target_role">Target Role</string>
+    <string name="resume_summary_strengths">Key Strengths (comma-separated)</string>
+    <string name="resume_summary_years">Years of Experience</string>
+    <string name="resume_summary_use">Use This</string>
+
+    <!-- Resume Experience tab -->
+    <string name="resume_add_experience">Add Experience</string>
+    <string name="resume_exp_company">Company</string>
+    <string name="resume_exp_title">Job Title</string>
+    <string name="resume_exp_location">Location</string>
+    <string name="resume_exp_start_date">Start Date</string>
+    <string name="resume_exp_end_date">End Date</string>
+    <string name="resume_exp_current">I currently work here</string>
+    <string name="resume_exp_bullets_label">Achievements / Bullets</string>
+    <string name="resume_ai_generate_bullets">AI Generate Bullets</string>
+    <string name="resume_bullet_hint">Describe an achievement…</string>
+    <string name="resume_exp_empty">No experience added yet.</string>
+
+    <!-- Resume Education tab -->
+    <string name="resume_add_education">Add Education</string>
+    <string name="resume_edu_school">School / University</string>
+    <string name="resume_edu_degree">Degree (e.g. BS Computer Science)</string>
+    <string name="resume_edu_field">Field of Study</string>
+    <string name="resume_edu_start_date">Start Date</string>
+    <string name="resume_edu_end_date">End Date</string>
+    <string name="resume_edu_gpa">GPA (optional)</string>
+    <string name="resume_edu_empty">No education added yet.</string>
+
+    <!-- Resume Skills tab -->
+    <string name="resume_skills_technical">Technical Skills</string>
+    <string name="resume_skills_tools">Tools &amp; Technologies</string>
+    <string name="resume_skills_soft">Soft Skills</string>
+    <string name="resume_skills_add_hint">Add a skill…</string>
+
+    <!-- Resume Projects tab -->
+    <string name="resume_add_project">Add Project</string>
+    <string name="resume_proj_name">Project Name</string>
+    <string name="resume_proj_description">Description</string>
+    <string name="resume_proj_tech">Tech Stack (comma-separated)</string>
+    <string name="resume_proj_link">Project Link (optional)</string>
+    <string name="resume_proj_empty">No projects added yet.</string>
+
+    <!-- Resume Certifications tab -->
+    <string name="resume_add_certification">Add Certification</string>
+    <string name="resume_cert_name">Certification Name</string>
+    <string name="resume_cert_issuer">Issuer (e.g. Amazon, Google)</string>
+    <string name="resume_cert_date">Date (e.g. Mar 2024)</string>
+    <string name="resume_cert_empty">No certifications added yet.</string>
+
+    <!-- Resume Preview -->
+    <string name="resume_preview">Preview</string>
+    <string name="resume_export_pdf">Export PDF</string>
+    <string name="resume_change_template">Template</string>
+    <string name="resume_change_color">Color</string>
+
+    <!-- Resume Templates -->
+    <string name="resume_select_template">Select Template</string>
+    <string name="resume_template_picker_title">Choose Template</string>
+    <string name="resume_template_modern">Modern</string>
+    <string name="resume_template_classic">Classic</string>
+    <string name="resume_template_minimal">Minimal</string>
+    <string name="resume_template_executive">Executive</string>
+    <string name="resume_template_sidebar">Sidebar</string>
+
+    <!-- Resume list -->
+    <string name="resume_empty_list">No resumes yet. Tap + to create one.</string>
+
+    <!-- Resume ATS Scoring -->
+    <string name="resume_ats_analyzing">Analyzing your resume…</string>
+    <string name="resume_ats_missing_general">Missing Keywords</string>
+    <string name="resume_ats_score">ATS Score</string>
+    <string name="resume_ats_paste_hint">Paste the job description here…</string>
+    <string name="resume_ats_analyze">Analyze Match</string>
+    <string name="resume_ats_min_chars">Job description must be at least 50 characters.</string>
+    <string name="resume_ats_keywords_label">Keywords (50%%)</string>
+    <string name="resume_ats_title_label">Title Match (25%%)</string>
+    <string name="resume_ats_structure_label">Structure (25%%)</string>
+    <string name="resume_ats_matched">Matched Keywords</string>
+    <string name="resume_ats_missing_required">Missing Required</string>
+    <string name="resume_ats_missing_preferred">Missing Preferred</string>
+    <string name="resume_ats_suggestions">Suggestions</string>
+    <string name="resume_ats_clear">Clear Results</string>
+    <string name="resume_ats_error">Could not analyze. Try again.</string>
+
+    <!-- Resume AI Bullets dialog -->
+    <string name="resume_ai_bullets_title">AI Bullet Points</string>
+    <string name="resume_add_bullet">Add Bullet</string>
+    <string name="resume_bullets_generating">Generating bullet points…</string>
+    <string name="resume_ai_bullets_job_title">Job Title</string>
+    <string name="resume_ai_bullets_achievement">Describe your achievement</string>
+    <string name="resume_ai_bullets_generate">Generate</string>
+    <string name="resume_ai_bullets_use">Use</string>
+
+    <!-- Resume AI Summary dialog -->
+    <string name="resume_ai_summary_title">AI Summary</string>
+    <string name="resume_summary_generating">Generating summary…</string>
+    <string name="resume_ai_summary_generate">Generate Summaries</string>
+
+    <!-- Years of experience options -->
+    <string name="resume_years_entry">Entry-level</string>
+    <string name="resume_years_1_2">1-2 years</string>
+    <string name="resume_years_3_5">3-5 years</string>
+    <string name="resume_years_5_plus">5+ years</string>
+
+    <!-- Generic resume actions -->
+    <string name="resume_delete_item">Remove</string>
+    <string name="resume_collapse">Collapse</string>
+    <string name="resume_expand">Expand</string>
+
+    <!-- UI labels extracted from layouts -->
+    <string name="resume_editor_menu_description">Menu</string>
+    <string name="ats_score_initial_value">0</string>
+    <string name="add_item_button">+</string>
+    <string name="template_selected_label">Selected</string>
+
+    <!-- Final Assessment overview screen -->
+    <string name="final_assessment_phase_label">PHASE 4</string>
+    <string name="final_assessment_title">Final Assessment</string>
+    <string name="final_assessment_overview_questions_label">📋  Questions</string>
+    <string name="final_assessment_overview_questions_value">10 multiple choice</string>
+    <string name="final_assessment_overview_time_label">⏱  Time / question</string>
+    <string name="final_assessment_overview_time_value">15 seconds</string>
+    <string name="final_assessment_overview_pass_label">🏆  Pass threshold</string>
+    <string name="final_assessment_overview_pass_value">~70%  (7 of 10)</string>
+    <string name="final_assessment_overview_reward_label">🔓  On pass</string>
+    <string name="final_assessment_overview_reward_value">Certifications unlock</string>
+    <string name="final_assessment_overview_warning">Questions are analysis and evaluation level — harder than per-video quizzes. Complete all phases before attempting.</string>
+    <string name="final_assessment_btn_begin">Begin Assessment</string>
+    <string name="final_assessment_btn_back">Back to Roadmap</string>
+</resources>

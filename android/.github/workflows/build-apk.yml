@@ -1,0 +1,80 @@
+name: Build APK
+
+on:
+  workflow_run:
+    workflows: ["Code Quality"]
+    types: [completed]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Debug APK
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Make Gradle executable
+        run: chmod +x gradlew
+
+      - name: Restore debug keystore
+        run: |
+          mkdir -p ~/.android
+          echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > ~/.android/debug.keystore
+
+      - name: Print keystore SHA-1 (debug)
+        run: keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android | grep "SHA1"
+
+      - name: Create local.properties
+        run: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+          echo "BASE_URL=${{ secrets.BASE_URL }}" >> local.properties
+          echo "WS_BASE_URL=${{ secrets.WS_BASE_URL }}" >> local.properties
+          echo "GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}" >> local.properties
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Verify APK signing certificate SHA-1
+        run: |
+          APK=$(ls app/build/outputs/apk/debug/*.apk)
+          echo "=== APK: $APK ==="
+          BUILD_TOOLS=$(ls -d $ANDROID_SDK_ROOT/build-tools/* | sort -V | tail -1)
+          echo "=== Signing certificate fingerprints ==="
+          $BUILD_TOOLS/apksigner verify --print-certs "$APK" | grep -E "SHA-1|SHA-256|Signer"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: codecompass-debug-${{ github.event.workflow_run.head_sha }}
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 30
+
+      - name: Update GitHub Release
+        if: >
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.event == 'push'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APK=$(ls app/build/outputs/apk/debug/*.apk)
+          NOTES="Built from commit [${{ github.event.workflow_run.head_sha }}](https://github.com/${{ github.repository }}/commit/${{ github.event.workflow_run.head_sha }})"
+          if gh release view latest &>/dev/null; then
+            gh release upload latest "$APK" --clobber
+            gh release edit latest --title "CodeCompassAndroid - Latest" --notes "$NOTES"
+          else
+            gh release create latest "$APK" --title "CodeCompassAndroid - Latest" --notes "$NOTES"
+          fi

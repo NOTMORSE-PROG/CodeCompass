@@ -1,0 +1,58 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme -->
+    <style name="Base.Theme.CodeCompass" parent="Theme.Material3.Light.NoActionBar">
+        <!-- Brand colours -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryVariant">@color/colorPrimaryVariant</item>
+        <item name="colorOnPrimary">@color/colorOnPrimary</item>
+        <item name="colorSurface">@color/colorSurface</item>
+        <item name="colorError">@color/colorError</item>
+        <item name="android:colorBackground">@color/colorBackground</item>
+        <item name="android:statusBarColor">@color/colorSurface</item>
+        <item name="android:navigationBarColor">@color/colorSurface</item>
+
+        <!--
+            Override Material3 baseline tonal roles that default to purple/violet.
+            This fixes: purple cursor, purple unfocused labels, purple tint on inputs.
+        -->
+        <item name="colorSecondary">@color/colorPrimary</item>
+        <item name="colorOnSecondary">@color/colorOnPrimary</item>
+        <item name="colorTertiary">@color/colorTextSecondary</item>
+        <item name="colorOnTertiary">@color/white</item>
+        <!-- colorOnSurface = typed text colour inside every EditText -->
+        <item name="colorOnSurface">@color/colorTextPrimary</item>
+        <!-- colorOnSurfaceVariant = unfocused label / helper text -->
+        <item name="colorOnSurfaceVariant">@color/colorTextSecondary</item>
+        <!-- colorOutline = unfocused box stroke -->
+        <item name="colorOutline">@color/colorDivider</item>
+    </style>
+
+    <style name="Theme.CodeCompass" parent="Base.Theme.CodeCompass" />
+
+    <!-- Splash screen theme (Android 12+ native SplashScreen API) -->
+    <style name="Theme.CodeCompass.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/colorSurface</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.CodeCompass</item>
+    </style>
+
+    <!--
+        Custom TextInputLayout style.
+        • Floating label: dark (#0A0A0A) — readable on white
+        • Placeholder hint: gray (#6B6B6B)
+        • Stroke: gray unfocused → yellow focused (input_stroke_color selector)
+        • Corners: 10 dp
+    -->
+    <style name="Widget.CodeCompass.TextInputLayout"
+        parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxStrokeColor">@color/input_stroke_color</item>
+        <item name="boxStrokeWidth">1.5dp</item>
+        <item name="boxStrokeWidthFocused">2dp</item>
+        <item name="boxCornerRadiusTopStart">10dp</item>
+        <item name="boxCornerRadiusTopEnd">10dp</item>
+        <item name="boxCornerRadiusBottomStart">10dp</item>
+        <item name="boxCornerRadiusBottomEnd">10dp</item>
+        <item name="hintTextColor">@color/input_hint_color</item>
+        <item name="android:textColorHint">@color/colorTextSecondary</item>
+    </style>
+</resources>

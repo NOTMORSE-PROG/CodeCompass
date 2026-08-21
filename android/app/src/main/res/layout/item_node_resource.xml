@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Resource row item inside NodeDetailBottomSheet -->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootResourceRow"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingVertical="10dp"
+    android:paddingHorizontal="12dp"
+    android:layout_marginBottom="4dp">
+
+    <!-- Left accent border (color set programmatically for active/done states) -->
+    <View
+        android:id="@+id/viewResourceBorder"
+        android:layout_width="3dp"
+        android:layout_height="match_parent"
+        android:layout_marginEnd="10dp"
+        android:background="@color/colorSurface" />
+
+    <!-- Index number -->
+    <TextView
+        android:id="@+id/tvResourceIndex"
+        android:layout_width="24dp"
+        android:layout_height="wrap_content"
+        android:text="@string/resource_number_placeholder"
+        android:textSize="11sp"
+        android:typeface="monospace"
+        android:textColor="@color/textSecondaryLight"
+        android:layout_marginEnd="8dp" />
+
+    <!-- Type badge (YT / A / D / GH / C) -->
+    <TextView
+        android:id="@+id/tvResourceTypeBadge"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:gravity="center"
+        android:text="@string/resource_type_youtube"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:textColor="@color/resourceYtText"
+        android:background="@drawable/bg_rounded_badge"
+        android:backgroundTint="@color/resourceYtBg"
+        android:layout_marginEnd="10dp" />
+
+    <!-- Title + duration -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/tvResourceTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/resource_title_placeholder"
+            android:textSize="13sp"
+            android:textColor="@color/colorTextPrimary"
+            android:maxLines="2"
+            android:ellipsize="end" />
+
+        <TextView
+            android:id="@+id/tvResourceChannel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="11sp"
+            android:textColor="@color/colorTextSecondary"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <!-- Duration -->
+    <TextView
+        android:id="@+id/tvResourceDuration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/resource_duration_placeholder"
+        android:textSize="11sp"
+        android:textColor="@color/colorTextSecondary"
+        android:layout_marginHorizontal="8dp" />
+
+    <!-- Status icon: ✓ done / ▶ active / ○ pending -->
+    <TextView
+        android:id="@+id/tvResourceStatus"
+        android:layout_width="20dp"
+        android:layout_height="wrap_content"
+        android:text="@string/resource_circle_icon"
+        android:textSize="14sp"
+        android:gravity="center"
+        android:textColor="@color/textSecondaryLight" />
+
+
+</LinearLayout>

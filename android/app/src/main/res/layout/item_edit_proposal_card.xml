@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="6dp"
+    app:cardCornerRadius="10dp"
+    app:cardElevation="0dp"
+    app:cardBackgroundColor="@color/colorBrandYellowPale"
+    app:strokeColor="@color/colorPrimary"
+    app:strokeWidth="2dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <!-- Header -->
+        <TextView
+            android:id="@+id/tvProposalHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textColor="@color/colorTextPrimary"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- Proposal summary items (populated in code) -->
+        <LinearLayout
+            android:id="@+id/containerProposalItems"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"/>
+
+        <!-- Warning (shown for replace_node proposals) -->
+        <LinearLayout
+            android:id="@+id/layoutDangerWarning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="#FFF8E1"
+            android:padding="8dp"
+            android:visibility="gone"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/proposal_warning_msg"
+                android:textSize="12sp"
+                android:textColor="#F57F17"/>
+
+        </LinearLayout>
+
+        <!-- Applied confirmation (hidden until applied) -->
+        <TextView
+            android:id="@+id/tvApplied"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="@string/proposal_applied_msg"
+            android:textSize="13sp"
+            android:textColor="@color/colorTextPrimary"
+            android:visibility="gone"/>
+
+        <!-- Action buttons -->
+        <LinearLayout
+            android:id="@+id/layoutProposalButtons"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="horizontal"
+            android:gravity="end">
+
+            <TextView
+                android:id="@+id/btnDismissProposal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="8dp"
+                android:text="@string/dismiss"
+                android:textSize="13sp"
+                android:textColor="@color/colorTextSecondary"
+                android:clickable="true"
+                android:focusable="true"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnApplyProposal"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="@string/apply"
+                android:textSize="13sp"
+                app:backgroundTint="@color/colorPrimary"
+                android:textColor="@color/colorOnPrimary"
+                style="@style/Widget.MaterialComponents.Button"
+                app:cornerRadius="6dp"/>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

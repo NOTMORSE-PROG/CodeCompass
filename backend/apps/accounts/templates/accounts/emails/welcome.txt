@@ -1,0 +1,14 @@
+Hi {{ user.first_name }},
+
+Welcome to CodeCompass — your AI-powered career guide for CCS students in the Philippines!
+
+Here's what you can do:
+
+  - Generate a Roadmap: get a personalized learning path based on your goals
+  - AI Career Chat: ask anything about careers, skills, or the tech industry
+  - Build your Resume: AI-enhanced resume editor with ATS scoring
+  - Earn XP & Badges: level up as you complete your roadmap
+
+Get started here: {{ app_url }}/app/dashboard
+
+— The CodeCompass Team
