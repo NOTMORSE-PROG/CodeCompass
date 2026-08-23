@@ -1,6 +1,16 @@
-# CodeCompass — Frontend
+# CodeCompass
 
-React + Vite frontend for CodeCompass, an AI-driven career guide and personalized learning roadmap platform built for CCS students in the Philippines.
+CodeCompass is an AI-driven career guide and personalized learning-roadmap platform for CCS students in the Philippines. This repository contains the web frontend, API and WebSocket backend, and native Android client under one project title.
+
+## Repository Layout
+
+| Path | Component | Main technology |
+|---|---|---|
+| `/` | Web frontend | React 18 and Vite 6 |
+| `backend/` | REST API and WebSocket server | Django 5.1, Django REST Framework, and Channels |
+| `android/` | Native Android client | Android/Gradle project |
+
+The canonical repository is `https://github.com/NOTMORSE-PROG/CodeCompass`. Component directories are maintained together and are not separate Git repositories.
 
 ---
 
@@ -84,8 +94,8 @@ React + Vite frontend for CodeCompass, an AI-driven career guide and personalize
 ### Steps
 
 ```bash
-git clone https://github.com/NOTMORSE-PROG/CodeCompass_Frontend.git
-cd CodeCompass_Frontend
+git clone https://github.com/NOTMORSE-PROG/CodeCompass.git
+cd CodeCompass
 
 npm install
 ```
@@ -103,6 +113,8 @@ npm run dev
 ```
 
 The app runs at `http://localhost:5173`.
+
+For backend setup, migrations, required services, and environment variables, see [`backend/README.md`](backend/README.md). For the Android client, see [`android/README.md`](android/README.md).
 
 ---
 
@@ -127,8 +139,9 @@ The app runs at `http://localhost:5173`.
 
 ---
 
-## Deployment
+## Deployment Status
 
-Deployed on **Vercel**. Set the three environment variables in the Vercel project settings. Use `wss://` for `VITE_WS_URL` in production.
+- **Web frontend:** no active Vercel deployment is retained. The former `https://code-compass-ccs.vercel.app` project was intentionally deleted and currently returns 404.
+- **Backend:** the legacy `https://codecompass-backend.onrender.com` service still answers from Render, but it is not visible in the accessible Render workspace and is pending owner/support-assisted deletion. Do not treat it as a managed production target.
 
-**Live URL:** https://code-compass-ccs.vercel.app
+If a new deployment is authorized later, deploy the web app from `/` and the backend from `backend/`. Restore the required environment variables from the deployment owner; never commit credential values.

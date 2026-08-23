@@ -89,8 +89,8 @@ Django REST API and real-time WebSocket server for CodeCompass, an AI-driven car
 ### Steps
 
 ```bash
-git clone https://github.com/NOTMORSE-PROG/CodeCompass_Backend.git
-cd CodeCompass_Backend
+git clone https://github.com/NOTMORSE-PROG/CodeCompass.git
+cd CodeCompass/backend
 
 python -m venv venv
 source venv/bin/activate   # Windows: venv\Scripts\activate
@@ -152,8 +152,8 @@ celery -A config worker --loglevel=info
 
 ---
 
-## Deployment
+## Deployment Status
 
-Deployed on **Render**. Database on **Neon PostgreSQL**. Cache and Channels layer on **Redis**.
+The legacy `https://codecompass-backend.onrender.com` service still responds from Render, but it is not visible in the accessible Render workspace and is pending owner/support-assisted deletion. Its source and environment configuration must not be changed from a different account as a substitute for deleting the service.
 
-**Live URL:** https://codecompass-backend.onrender.com
+For any future authorized deployment, use `backend/` as the service root. The application expects PostgreSQL, Redis, and the environment variables listed above.
