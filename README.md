@@ -142,6 +142,6 @@ For backend setup, migrations, required services, and environment variables, see
 ## Deployment Status
 
 - **Web frontend:** no active Vercel deployment is retained. The former `https://code-compass-ccs.vercel.app` project was intentionally deleted and currently returns 404.
-- **Backend:** the legacy `https://codecompass-backend.onrender.com` service still answers from Render, but it is not visible in the accessible Render workspace and is pending owner/support-assisted deletion. Do not treat it as a managed production target.
+- **Backend:** the former `https://codecompass-backend.onrender.com` Render service was intentionally deleted. Render now returns a provider-level `Not Found` response with no origin server.
 
-If a new deployment is authorized later, deploy the web app from `/` and the backend from `backend/`. Restore the required environment variables from the deployment owner; never commit credential values.
+No active CodeCompass production deployment remains. If a new deployment is authorized later, deploy the web app from `/` and the backend from `backend/`. Restore the required environment variables from the deployment owner; never commit credential values. The former public aliases cannot be assumed to be reclaimable.

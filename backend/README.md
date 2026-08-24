@@ -154,6 +154,6 @@ celery -A config worker --loglevel=info
 
 ## Deployment Status
 
-The legacy `https://codecompass-backend.onrender.com` service still responds from Render, but it is not visible in the accessible Render workspace and is pending owner/support-assisted deletion. Its source and environment configuration must not be changed from a different account as a substitute for deleting the service.
+The former `https://codecompass-backend.onrender.com` Render service was intentionally deleted. Render now returns a provider-level `Not Found` response with no origin server. The obsolete separate `CodeCompass_Backend` GitHub repository was archived as a full-history bundle and deleted after that removal was verified.
 
-For any future authorized deployment, use `backend/` as the service root. The application expects PostgreSQL, Redis, and the environment variables listed above.
+No active backend deployment remains. For any future authorized deployment, use `backend/` as the service root. The application expects PostgreSQL, Redis, and the environment variables listed above; the former Render hostname cannot be assumed to be reclaimable.
