@@ -62,20 +62,17 @@ app/
 
 ## Backend
 
-The app connects to a Django REST + Django Channels backend deployed on Render.
+The app connects to the Django REST and Django Channels service maintained in [`../backend/`](../backend/). The former Render service was intentionally deleted, so there is no active production backend URL.
 
-| Config | Default |
-|--------|---------|
-| REST API | `https://codecompass-backend.onrender.com/api/` |
-| WebSocket | `wss://codecompass-backend.onrender.com/ws/` |
-
-Override both URLs by adding them to `local.properties`:
+Configure both URLs in `local.properties`. For an Android emulator with the backend running locally on port 8000, use:
 
 ```properties
-BASE_URL=https://your-backend.example.com/api/
-WS_BASE_URL=wss://your-backend.example.com/ws/
+BASE_URL=http://10.0.2.2:8000/api/
+WS_BASE_URL=ws://10.0.2.2:8000/ws/
 GOOGLE_WEB_CLIENT_ID=your-google-client-id
 ```
+
+For a physical device, replace `10.0.2.2` with the development computer's reachable LAN address. For any future production service, use its verified HTTPS and WSS URLs.
 
 ---
 
@@ -90,15 +87,15 @@ GOOGLE_WEB_CLIENT_ID=your-google-client-id
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/NOTMORSE-PROG/CodeCompass_Android.git
-   cd CodeCompass_Android
+   git clone https://github.com/NOTMORSE-PROG/CodeCompass.git
+   cd CodeCompass/android
    ```
 
 2. Create `local.properties` in the project root (if it doesn't exist) and add your secrets:
    ```properties
    sdk.dir=/path/to/your/android/sdk
-   BASE_URL=https://codecompass-backend.onrender.com/api/
-   WS_BASE_URL=wss://codecompass-backend.onrender.com/ws/
+   BASE_URL=http://10.0.2.2:8000/api/
+   WS_BASE_URL=ws://10.0.2.2:8000/ws/
    GOOGLE_WEB_CLIENT_ID=your-google-web-client-id
    ```
 
